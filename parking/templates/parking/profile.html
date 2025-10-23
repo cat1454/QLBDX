@@ -1,0 +1,66 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hồ sơ - Smart Parking</title>
+    <link rel="stylesheet" href="{% static 'parking/css/profile.css' %}">
+</head>
+<body class="profile-page">
+
+    <main class="container profile-main">
+        <section class="profile-card-horizontal card">
+            <div class="profile-left">
+                {% if profile.avatar %}
+                    <img src="{{ profile.avatar.url }}" alt="Avatar" class="profile-img-left">
+                {% else %}
+                    <div class="profile-img-left placeholder"> <span>{{ profile.user.username|slice:":1"|upper }}</span> </div>
+                {% endif %}
+            </div>
+
+            <div class="profile-right">
+                <div class="profile-head">
+                    <h2 class="profile-name">{{ profile.user.get_full_name|default:profile.user.username }}</h2>
+                    <p class="profile-username">@{{ profile.user.username }}</p>
+                </div>
+
+                <div class="profile-info-grid">
+                    <div class="info-item">
+                        <p class="label">Email</p>
+                        <p class="value">{{ profile.user.email }}</p>
+                    </div>
+                    <div class="info-item">
+                        <p class="label">Vai trò</p>
+                        <p class="value">{{ profile.role|default:"Chưa xác định" }}</p>
+                    </div>
+                    <div class="info-item">
+                        <p class="label">Số dư ví</p>
+                        <p class="value">{{ profile.wallet|default:"0" }} VNĐ</p>
+                    </div>
+                    <div class="info-item">
+                        <p class="label">Ngày tham gia</p>
+                        <p class="value">{{ profile.created_at|date:"d/m/Y H:i" }}</p>
+                    </div>
+                </div>
+
+                <div class="profile-buttons">
+                    <a href="{% url 'edit_profile' %}" class="btn btn-primary">✏️ Chỉnh sửa</a>
+                    <a href="{% url 'logout' %}" class="btn btn-outline">🚪 Đăng xuất</a>
+                </div>
+            </div>
+        </section>
+
+        <section class="profile-extra card">
+            <h3>Thông tin khác</h3>
+            <p class="muted">Bạn có thể cập nhật avatar, thông tin liên hệ, hoặc kiểm tra lịch sử giao dịch từ đây.</p>
+            <div class="extra-actions">
+                <a href="{% url 'dashboard_user' %}" class="link-action">⟵ Quay về Dashboard</a>
+                {% comment %} <a href="{% url 'history' %}" class="link-action">Xem lịch sử vào/ra</a> {% endcomment %}
+            </div>
+        </section>
+    </main>
+</body>
+</html>
+// ...existing code...

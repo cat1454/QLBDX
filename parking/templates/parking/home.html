@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking - Trang chủ</title>
+    <link rel="stylesheet" href="{% static 'parking/css/home.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="nav-brand">
+            <img src="{% static 'parking/images/logo.png' %}" alt="Logo" class="logo">
+            <span>Smart Parking</span>
+        </div>
+        <div class="nav-links">
+            <a href="{% url 'home' %}" class="active">Trang chủ</a>
+            <a href="{% url 'login' %}" class="btn btn-outline">Đăng nhập</a>
+            <a href="{% url 'register' %}" class="btn btn-primary">Đăng ký</a>
+            <div class="language-selector">
+                <select class="select-styled">
+                    <option value="vi">🇻🇳 Tiếng Việt</option>
+                    <option value="en">🇬🇧 English</option>
+                </select>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="hero">
+            <h1>Bãi Đỗ Xe Thông Minh</h1>
+            <p class="subtitle">Đặt chỗ trước - Tiết kiệm thời gian</p>
+        </section>
+
+        <section class="status-card">
+            <div class="status-item">
+                <h3>Tình Trạng Bãi Xe</h3>
+                <div class="parking-status">
+                    <div class="status-circle {% if available_slots > 0 %}available{% else %}full{% endif %}">
+                        {{ available_slots }}/{{ total_slots }}
+                    </div>
+                    <p>chỗ trống</p>
+                </div>
+            </div>
+            <div class="status-item">
+                <h3>Giá Dịch Vụ</h3>
+                <div class="price-tag">
+                    <span class="amount">{{ price_per_hour }}</span>
+                    <span class="currency">VNĐ/giờ</span>
+                </div>
+            </div>
+            <a href="{% url 'login' %}" class="btn btn-large btn-primary">Đặt Chỗ Ngay</a>
+        </section>
+
+        <section class="features">
+            <h2>Tại sao chọn chúng tôi?</h2>
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <i class="fas fa-clock"></i>
+                    <h3>Đặt Chỗ 24/7</h3>
+                    <p>Đặt chỗ mọi lúc, mọi nơi</p>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>An Toàn</h3>
+                    <p>Bảo vệ 24/7, camera giám sát</p>
+                </div>
+                <div class="feature-item">
+                    <i class="fas fa-wallet"></i>
+                    <h3>Giá Cả Hợp Lý</h3>
+                    <p>Thanh toán linh hoạt</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2025 Smart Parking Team</p>
+                <div class="social-links">
+                    <a href="#" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="#" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Font Awesome for icons -->
+    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <title>User Dashboard - Smart Parking</title>
+    <link rel="stylesheet" href="{% static 'parking/css/dashboard_user.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="dashboard">
+
+    {% include 'parking/navbar.html' %}
+
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <div class="header-content">
+                <h1>🧰 Nhân viên Dashboard</h1>
+                <p class="welcome-text">Xin chào, {{ user.username }} 👋</p>
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">🚗</div>
+                    <p class="stat-label">Lượt xe hôm nay</p>
+                    <h3 class="stat-value">20</h3>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🅿️</div>
+                    <p class="stat-label">Xe đang trong bãi</p>
+                    <h3 class="stat-value">8</h3>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <p class="stat-label">Doanh thu tạm tính</p>
+                    <h3 class="stat-value">80.000 VNĐ</h3>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-primary">
+                    <i class="fas fa-barrier-gate"></i>
+                    Điều khiển barrier
+                </button>
+                <button class="btn btn-secondary">
+                    <i class="fas fa-history"></i>
+                    Xem lịch sử vào/ra
+                </button>
+                <button class="btn btn-secondary">
+                    <i class="fas fa-user"></i>
+                    Xem thông tin cá nhân
+                </button>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+// ...existing code...
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chỉnh sửa hồ sơ - Smart Parking</title>
+    <link rel="stylesheet" href="{% static 'parking/css/profile.css' %}">
+</head>
+<body class="edit-profile-page">
+    <main class="container edit-main">
+        <div class="card edit-card">
+            <header class="card-header">
+                <h2>✏️ Chỉnh sửa thông tin cá nhân</h2>
+                <p class="muted">Cập nhật thông tin hiển thị và avatar của bạn</p>
+            </header>
+
+            <div class="card-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <form method="POST" enctype="multipart/form-data" class="form-grid">
+                    {% csrf_token %}
+                    <div class="form-column">
+                        <fieldset>
+                            <legend>Ảnh đại diện</legend>
+                            <div class="avatar-preview">
+                                {% if profile.avatar %}
+                                    <img src="{{ profile.avatar.url }}" alt="Avatar" class="avatar-lg">
+                                {% else %}
+                                    <div class="avatar-lg placeholder">{{ profile.user.username|slice:":1"|upper }}</div>
+                                {% endif %}
+                            </div>
+                            {{ profile_form.avatar }}
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Thông tin liên hệ</legend>
+                            {{ user_form.email }}
+                            {{ profile_form.phone }}
+                        </fieldset>
+                    </div>
+
+                    <div class="form-column">
+                        <fieldset>
+                            <legend>Tên hiển thị</legend>
+                            {{ user_form.first_name }}
+                            {{ user_form.last_name }}
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Khác</legend>
+                            {{ profile_form.wallet }}
+                            <p class="muted small">Trường 'Vai trò' chỉ có thể thay đổi bởi quản trị viên.</p>
+                        </fieldset>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">💾 Lưu thay đổi</button>
+                            <a href="{% url 'profile' %}" class="btn btn-outline">Hủy</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
+// ...existing code...

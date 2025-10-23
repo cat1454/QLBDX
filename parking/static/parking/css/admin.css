@@ -1,0 +1,93 @@
+:root{
+  --bg:#0b0b0c;
+  --panel:#0f1720;
+  --muted:#9aa4af;
+  --accent:#d1d5db;
+  --primary:#1f2937;
+  --card-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  --glass: rgba(255,255,255,0.03);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--accent);font-family:Inter,Segoe UI,Roboto,Arial,Helvetica;font-size:16px}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+
+/* header */
+.admin-header{background:linear-gradient(180deg,var(--panel),rgba(15,23,32,0.9));border-bottom:1px solid rgba(255,255,255,0.03);padding:18px 0;margin-bottom:18px}
+.header-left h1{margin:0;color:#fff;font-size:1.4rem}
+.header-left .sub{margin:4px 0 0;color:var(--muted);font-size:0.95rem}
+.header-right{float:right;display:flex;gap:12px;align-items:center}
+.header-right .user{color:var(--muted);font-weight:600}
+.btn-ghost{color:var(--accent);text-decoration:none;padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03)}
+.btn-ghost:hover{background:var(--glass)}
+
+/* layout */
+.main-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px;padding-bottom:40px}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+/* overview */
+.overview{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:700px){.overview{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;box-shadow:var(--card-shadow);border:1px solid rgba(255,255,255,0.02)}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.stat-title{color:var(--muted);font-size:0.95rem}
+.stat-value{color:#fff;font-size:1.6rem;font-weight:700}
+
+/* controls */
+.controls .card h3{margin:0 0 12px;color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#101317;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,0.04);font-weight:600}
+.btn:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+
+.notes{margin:0;padding-left:18px;color:var(--muted)}
+.notes li{margin:8px 0;font-size:0.95rem}
+
+/* small helpers */
+a, button{outline:none}
+
+:root{
+  --bg:#0b0b0c;
+  --panel:#0f1720;
+  --muted:#9aa4af;
+  --accent:#d1d5db;
+  --primary:#1f2937;
+  --card-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  --glass: rgba(255,255,255,0.03);
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--accent);font-family:Inter,Segoe UI,Roboto,Arial,Helvetica;font-size:16px}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+
+/* header */
+.admin-header{background:linear-gradient(180deg,var(--panel),rgba(15,23,32,0.9));border-bottom:1px solid rgba(255,255,255,0.03);padding:18px 0;margin-bottom:18px}
+.header-left h1{margin:0;color:#fff;font-size:1.4rem}
+.header-left .sub{margin:4px 0 0;color:var(--muted);font-size:0.95rem}
+.header-right{float:right;display:flex;gap:12px;align-items:center}
+.header-right .user{color:var(--muted);font-weight:600}
+.btn-ghost{color:var(--accent);text-decoration:none;padding:8px 12px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03)}
+.btn-ghost:hover{background:var(--glass)}
+
+/* layout */
+.main-grid{display:grid;grid-template-columns:2fr 1fr;gap:18px;padding-bottom:40px}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+/* overview */
+.overview{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+@media(max-width:700px){.overview{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;padding:16px;box-shadow:var(--card-shadow);border:1px solid rgba(255,255,255,0.02)}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.stat-title{color:var(--muted);font-size:0.95rem}
+.stat-value{color:#fff;font-size:1.6rem;font-weight:700}
+
+/* controls */
+.controls .card h3{margin:0 0 12px;color:#fff}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#101317;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,0.04);font-weight:600}
+.btn:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+
+.notes{margin:0;padding-left:18px;color:var(--muted)}
+.notes li{margin:8px 0;font-size:0.95rem}
+
+/* small helpers */
+a, button{outline:none}

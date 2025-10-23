@@ -1,0 +1,173 @@
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: #f3f6f9;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #002b5c;
+    color: white;
+    padding: 20px 0;
+}
+
+nav a {
+    margin: 0 10px;
+    color: #fff;
+    text-decoration: none;
+}
+
+main {
+    padding: 30px;
+    background: #fff;
+    margin: 20px auto;
+    width: 60%;
+    border-radius: 15px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+button {
+    background: #0078ff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.form-container {
+    width: 400px;
+    margin: 60px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.form-container input, select {
+    width: 90%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+}
+
+.form-container button {
+    background: #0078ff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.msg {
+    color: red;
+    font-weight: bold;
+}
+.dashboard-box {
+    margin: 20px auto;
+    background: #fff;
+    padding: 20px;
+    width: 60%;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    text-align: left;
+}
+
+.dashboard-box p {
+    margin: 8px 0;
+    font-size: 16px;
+}
+
+main button {
+    background: #0078ff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.dashboard-box button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    margin-top: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+/* ========== Profile ngang cân đối ========== */
+
+main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+    background: #f5f8ff;
+}
+
+.profile-card-horizontal {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 40px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 30px 40px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    width: 700px;
+}
+
+.profile-left {
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.profile-img-left {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #0078ff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.profile-right {
+    flex: 1;
+    text-align: left;
+}
+
+.profile-right h2 {
+    font-size: 26px;
+    color: #002b5c;
+    margin-bottom: 10px;
+}
+
+.profile-right p {
+    margin: 5px 0;
+    color: #333;
+    font-size: 16px;
+}
+
+.profile-buttons {
+    margin-top: 15px;
+}
+
+.profile-buttons button {
+    background: #0078ff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-right: 10px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.profile-buttons button:hover {
+    background: #005ec2;
+}
