@@ -1,31 +1,67 @@
 <!DOCTYPE html>
 <html lang="vi">
-     {% load static %}
+{% load static %}
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Admin Dashboard - Smart Parking</title>
-  <link rel="stylesheet" href="{%  static 'parking/css/style.css' %}">
+  <link rel="stylesheet" href="{% static 'parking/css/admin.css' %}">
 </head>
-<body>
-  {% include 'parking/navbar.html' %}
-  <header>
-    <h1>📊 Admin Dashboard</h1>
-    <nav>
-      <a href="{% url 'home' %}">Trang chủ</a>
-      <a href="{% url 'logout' %}">Đăng xuất</a>
-    </nav>
+<body class="admin-dashboard">
+   
+
+  <header class="admin-header">
+    <div class="container">
+      <div class="header-left">
+        <h1>Admin Dashboard</h1>
+        <p class="sub">Quản trị hệ thống</p>
+      </div>
+      <div class="header-right">
+        <span class="user">Hi, {{ user.username }}</span>
+        <a href="{% url 'logout' %}" class="btn-ghost">Đăng xuất</a>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <h2>Xin chào, {{ user.username }} 👋</h2>
-    <div class="dashboard-box">
-      <p>Tổng số tài khoản: 25</p>
-      <p>Tổng số xe trong bãi: 18/20</p>
-      <p>Lịch sử gần nhất: 5 lượt vào/ra hôm nay</p>
-    </div>
-    <button>Quản lý tài khoản</button>
-    <button>Xem lịch sử</button>
-    <button>Thống kê doanh thu</button>
+  <main class="container main-grid">
+    <section class="overview">
+      <div class="card stat">
+        <div class="stat-title">Tổng tài khoản</div>
+        <div class="stat-value">25</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-title">Xe đang trong bãi</div>
+        <div class="stat-value">18 / 20</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-title">Lượt hôm nay</div>
+        <div class="stat-value">5</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-title">Doanh thu tạm tính</div>
+        <div class="stat-value">80.000 VNĐ</div>
+      </div>
+    </section>
+
+    <section class="controls">
+      <div class="card">
+        <h3>Hành động nhanh</h3>
+        <div class="actions">
+          <a href="{% url 'admin:auth_user_changelist' %}" class="btn">Quản lý tài khoản</a>
+          <a href="#" class="btn">Xem lịch sử</a>
+          <a href="#" class="btn">Thống kê</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Ghi chú</h3>
+        <ul class="notes">
+          <li>Luôn đăng xuất khi xong công việc.</li>
+          <li>Thay đổi mật khẩu định kỳ.</li>
+          <li>Kiểm tra logs khi có sự cố.</li>
+        </ul>
+      </div>
+    </section>
   </main>
 </body>
 </html>

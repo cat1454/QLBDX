@@ -1,0 +1,138 @@
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-06 15:36+0700\n"
+"Language: vi\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#: .\parking\templates\parking\base.html:22
+#: .\parking\templates\parking\home.html:22
+msgid "Dashboard"
+msgstr "Bảng điều khiển"
+
+#: .\parking\templates\parking\base.html:23
+#: .\parking\templates\parking\home.html:23
+msgid "Profile"
+msgstr "Hồ sơ"
+
+#: .\parking\templates\parking\base.html:24
+#: .\parking\templates\parking\home.html:24
+msgid "Logout"
+msgstr "Đăng xuất"
+
+#: .\parking\templates\parking\base.html:26
+#: .\parking\templates\parking\home.html:26
+#: .\parking\templates\parking\login.html:5
+msgid "Login"
+msgstr "Đăng nhập"
+
+#: .\parking\templates\parking\base.html:27
+#: .\parking\templates\parking\home.html:27
+msgid "Register"
+msgstr "Đăng ký"
+
+#: .\parking\templates\parking\base.html:56
+#, fuzzy
+#| msgid "Smart Parking System"
+msgid "Smart Parking Team"
+msgstr "Bãi Đỗ Xe Thông Minh"
+
+#: .\parking\templates\parking\dashboard_customer.html:5
+#, fuzzy
+#| msgid "Dashboard"
+msgid "Customer Dashboard"
+msgstr "Bảng điều khiển"
+
+#: .\parking\templates\parking\dashboard_customer.html:16
+#, python-format
+msgid "Welcome, %(name)s!"
+msgstr ""
+
+#: .\parking\templates\parking\dashboard_customer.html:26
+msgid "Remaining Bookings"
+msgstr ""
+
+#: .\parking\templates\parking\dashboard_customer.html:34
+msgid "Wallet Balance"
+msgstr ""
+
+#: .\parking\templates\parking\dashboard_customer.html:35
+msgid "VND"
+msgstr ""
+
+#: .\parking\templates\parking\home.html:8
+msgid "Smart Parking - Home"
+msgstr "Smart Parking - Trang chủ"
+
+#: .\parking\templates\parking\home.html:49
+msgid "Smart Parking System"
+msgstr "Bãi Đỗ Xe Thông Minh"
+
+#: .\parking\templates\parking\home.html:50
+msgid "Book in advance - Save time"
+msgstr "Đặt chỗ trước - Tiết kiệm thời gian"
+
+#: .\parking\templates\parking\home.html:55
+msgid "Parking Status"
+msgstr "Tình Trạng Bãi Xe"
+
+#: .\parking\templates\parking\home.html:60
+msgid "available spots"
+msgstr "chỗ trống"
+
+#: .\parking\templates\parking\home.html:64
+msgid "Service Price"
+msgstr "Giá Dịch Vụ"
+
+#: .\parking\templates\parking\home.html:67
+msgid "VND/hour"
+msgstr "VNĐ/giờ"
+
+#: .\parking\templates\parking\home.html:71
+#: .\parking\templates\parking\home.html:73
+msgid "Book Now"
+msgstr "Đặt Chỗ Ngay"
+
+#: .\parking\templates\parking\home.html:78
+msgid "Why Choose Us?"
+msgstr "Tại sao chọn chúng tôi?"
+
+#: .\parking\templates\parking\home.html:82
+msgid "24/7 Booking"
+msgstr "Đặt Chỗ 24/7"
+
+#: .\parking\templates\parking\home.html:83
+msgid "Book anytime, anywhere"
+msgstr "Đặt chỗ mọi lúc, mọi nơi"
+
+#: .\parking\templates\parking\home.html:87
+msgid "Safety"
+msgstr "An Toàn"
+
+#: .\parking\templates\parking\home.html:88
+msgid "24/7 security, camera surveillance"
+msgstr "Bảo vệ 24/7, camera giám sát"
+
+#: .\parking\templates\parking\home.html:92
+msgid "Reasonable Prices"
+msgstr "Giá Cả Hợp Lý"
+
+#: .\parking\templates\parking\home.html:93
+msgid "Flexible payment options"
+msgstr "Thanh toán linh hoạt"
+
+#: .\parking\templates\parking\login.html:22
+msgid "Welcome Back"
+msgstr ""
+
+#: .\parking\templates\parking\login.html:37
+msgid "Username"
+msgstr ""
+
+#: .\smartparking\settings.py:132
+msgid "English"
+msgstr ""
+
+#: .\smartparking\settings.py:133
+msgid "Vietnamese"
+msgstr ""

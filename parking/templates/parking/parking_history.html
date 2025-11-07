@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lịch sử đỗ xe - Smart Parking</title>
+    <link rel="stylesheet" href="{% static 'parking/css/dashboard_cus.css' %}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="history-page">
+    <header class="cust-header">
+        <div class="container">
+            <h1><i class="fas fa-history"></i> Lịch sử hoạt động</h1>
+            <p class="subtitle">Biển số xe: {{ profile.license_plate|default:"Chưa đăng ký" }}</p>
+        </div>
+    </header>
+
+    <main class="container main-area">
+        <!-- Thông tin xe hiện tại -->
+        {% if current_parking %}
+        <section class="card current-parking">
+            <h3><i class="fas fa-parking"></i> Xe đang trong bãi</h3>
+            <div class="parking-info">
+                <p><strong>Vị trí:</strong> {{ current_parking.spot_number }}</p>
+                <p><strong>Thời gian vào:</strong> {{ current_parking.entry_time }}</p>
+                <p><strong>Thời gian ước tính:</strong> <span id="estimated-time">--:--:--</span></p>
+                <p><strong>Phí tạm tính:</strong> <span id="estimated-fee">0 VNĐ</span></p>
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Lịch sử giao dịch -->
+        <section class="card">
+            <h3><i class="fas fa-receipt"></i> Lịch sử giao dịch</h3>
+            <div class="transaction-list">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian</th>
+                            <th>Loại</th>
+                            <th>Số tiền</th>
+                            <th>Số dư</th>
+                            <th>Ghi chú</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.timestamp }}</td>
+                            <td>{{ transaction.type }}</td>
+                            <td class="{{ transaction.amount|make_list|first|stringformat:'s' == '-'|yesno:'debit,credit' }}">
+                                {{ transaction.amount }} VNĐ
+                            </td>
+                            <td>{{ transaction.balance }} VNĐ</td>
+                            <td>{{ transaction.note }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Chưa có giao dịch nào</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Lịch sử đỗ xe -->
+        <section class="card">
+            <h3><i class="fas fa-car"></i> Lịch sử đỗ xe</h3>
+            <div class="parking-list">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Thời gian vào</th>
+                            <th>Thời gian ra</th>
+                            <th>Vị trí</th>
+                            <th>Thời gian đỗ</th>
+                            <th>Phí</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in parking_history %}
+                        <tr>
+                            <td>{{ record.entry_time }}</td>
+                            <td>{{ record.exit_time|default:"Đang đỗ" }}</td>
+                            <td>{{ record.spot_number }}</td>
+                            <td>{{ record.duration }}</td>
+                            <td>{{ record.fee }} VNĐ</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5">Chưa có lịch sử đỗ xe</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Cập nhật thời gian và phí ước tính
+        function updateEstimates() {
+            if (document.querySelector('.current-parking')) {
+                const entryTime = new Date('{{ current_parking.entry_time|date:"c" }}');
+                const now = new Date();
+                const duration = Math.floor((now - entryTime) / 1000); // Thời gian tính bằng giây
+                
+                // Định dạng thời gian
+                const hours = Math.floor(duration / 3600);
+                const minutes = Math.floor((duration % 3600) / 60);
+                const seconds = duration % 60;
+                const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                // Tính phí (ví dụ: 20,000 VNĐ/giờ)
+                const fee = Math.ceil(hours * 20000);
+                
+                document.getElementById('estimated-time').textContent = timeString;
+                document.getElementById('estimated-fee').textContent = `${fee.toLocaleString('vi-VN')} VNĐ`;
+            }
+        }
+
+        // Cập nhật mỗi giây
+        setInterval(updateEstimates, 1000);
+        updateEstimates(); // Cập nhật ngay lập tức
+    </script>
+</body>
+</html>

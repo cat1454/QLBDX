@@ -1,75 +1,96 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="{{ request.LANGUAGE_CODE }}">
 {% load static %}
+{% load i18n %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Parking - Trang chủ</title>
+    <title>{% trans "Smart Parking - Home" %}</title>
     <link rel="stylesheet" href="{% static 'parking/css/home.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <nav class="top-nav">
         <div class="nav-brand">
-            <img src="{% static 'parking/images/logo.png' %}" alt="Logo" class="logo">
+            <img src="{% static 'parking/media/avatars/logo.png' %}" alt="Logo" class="logo">
             <span>Smart Parking</span>
         </div>
         <div class="nav-links">
-            <a href="{% url 'home' %}" class="active">Trang chủ</a>
-            <a href="{% url 'login' %}" class="btn btn-outline">Đăng nhập</a>
-            <a href="{% url 'register' %}" class="btn btn-primary">Đăng ký</a>
+             
+           
+            {% if user.is_authenticated %}
+                <a href="{% url 'dashboard_customer' %}" class="btn btn-outline">{% trans "Dashboard" %}</a>
+                <a href="{% url 'profile' %}" class="btn btn-outline">{% trans "Profile" %}</a>
+                <a href="{% url 'logout' %}" class="btn btn-outline">{% trans "Logout" %}</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-outline">{% trans "Login" %}</a>
+                <a href="{% url 'register' %}" class="btn btn-primary">{% trans "Register" %}</a>
+            {% endif %}
             <div class="language-selector">
-                <select class="select-styled">
-                    <option value="vi">🇻🇳 Tiếng Việt</option>
-                    <option value="en">🇬🇧 English</option>
-                </select>
+                <form action="{% url 'set_language' %}" method="post" id="language-form">
+                    {% csrf_token %}
+                    <input name="next" type="hidden" value="{{ request.path }}">
+                    <select name="language" class="select-styled" onchange="this.form.submit()">
+                        {% get_current_language as LANGUAGE_CODE %}
+                        {% get_available_languages as LANGUAGES %}
+                        {% for lang_code, lang_name in LANGUAGES %}
+                            <option value="{{ lang_code }}" {% if lang_code == LANGUAGE_CODE %}selected{% endif %}>
+                                {% if lang_code == 'vi' %}�🇳 Tiếng Việt{% else %}�🇬🇧 English{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </form>
             </div>
         </div>
     </nav>
 
     <main class="container">
         <section class="hero">
-            <h1>Bãi Đỗ Xe Thông Minh</h1>
-            <p class="subtitle">Đặt chỗ trước - Tiết kiệm thời gian</p>
+            <h1>{% trans "Smart Parking System" %}</h1>
+            <p class="subtitle">{% trans "Book in advance - Save time" %}</p>
         </section>
 
         <section class="status-card">
             <div class="status-item">
-                <h3>Tình Trạng Bãi Xe</h3>
+                <h3>{% trans "Parking Status" %}</h3>
                 <div class="parking-status">
                     <div class="status-circle {% if available_slots > 0 %}available{% else %}full{% endif %}">
                         {{ available_slots }}/{{ total_slots }}
                     </div>
-                    <p>chỗ trống</p>
+                    <p>{% trans "available spots" %}</p>
                 </div>
             </div>
             <div class="status-item">
-                <h3>Giá Dịch Vụ</h3>
+                <h3>{% trans "Service Price" %}</h3>
                 <div class="price-tag">
                     <span class="amount">{{ price_per_hour }}</span>
-                    <span class="currency">VNĐ/giờ</span>
+                    <span class="currency">{% trans "VND/hour" %}</span>
                 </div>
             </div>
-            <a href="{% url 'login' %}" class="btn btn-large btn-primary">Đặt Chỗ Ngay</a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'dashboard_customer' %}" class="btn btn-large btn-primary">{% trans "Book Now" %}</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn btn-large btn-primary">{% trans "Book Now" %}</a>
+            {% endif %}
         </section>
 
         <section class="features">
-            <h2>Tại sao chọn chúng tôi?</h2>
+            <h2>{% trans "Why Choose Us?" %}</h2>
             <div class="feature-grid">
                 <div class="feature-item">
                     <i class="fas fa-clock"></i>
-                    <h3>Đặt Chỗ 24/7</h3>
-                    <p>Đặt chỗ mọi lúc, mọi nơi</p>
+                    <h3>{% trans "24/7 Booking" %}</h3>
+                    <p>{% trans "Book anytime, anywhere" %}</p>
                 </div>
                 <div class="feature-item">
                     <i class="fas fa-shield-alt"></i>
-                    <h3>An Toàn</h3>
-                    <p>Bảo vệ 24/7, camera giám sát</p>
+                    <h3>{% trans "Safety" %}</h3>
+                    <p>{% trans "24/7 security, camera surveillance" %}</p>
                 </div>
                 <div class="feature-item">
                     <i class="fas fa-wallet"></i>
-                    <h3>Giá Cả Hợp Lý</h3>
-                    <p>Thanh toán linh hoạt</p>
+                    <h3>{% trans "Reasonable Prices" %}</h3>
+                    <p>{% trans "Flexible payment options" %}</p>
                 </div>
             </div>
         </section>

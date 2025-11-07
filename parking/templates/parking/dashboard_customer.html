@@ -1,43 +1,43 @@
-<!DOCTYPE html>
-<html lang="vi">
+{% extends 'parking/base.html' %}
 {% load static %}
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Customer Dashboard - Smart Parking</title>
+{% load i18n %}
+
+{% block title %}{% trans "Customer Dashboard" %} - Smart Parking{% endblock %}
+
+{% block extra_css %}
   <link rel="stylesheet" href="{% static 'parking/css/dashboard_cus.css' %}">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-</head>
-<body class="customer-dashboard">
-   
-
+{% endblock %}
+{% block content %}
+<div class="customer-dashboard">
   <header class="cust-header">
     <div class="container">
-      <h1>🚘 Khách hàng</h1>
-      <p class="subtitle">Quản lý đặt chỗ & lịch sử của bạn</p>
+      <p class="subtitle">
+        {% blocktrans with name=user.get_full_name|default:user.username %}Welcome, {{ name }}!{% endblocktrans %}
+      </p>
     </div>
   </header>
 
   <main class="container main-area">
     <section class="overview grid">
       <article class="card">
-        <div class="card-icon">🅿️</div>
+        <div class="card-icon"><i class="fas fa-ticket-alt"></i></div>
         <div class="card-body">
-          <p class="label">Lượt đặt còn lại</p>
+          <p class="label">{% trans "Remaining Bookings" %}</p>
           <h2 class="value">{{ bookings_count|default:"0" }}</h2>
         </div>
       </article>
 
       <article class="card">
-        <div class="card-icon">💰</div>
+        <div class="card-icon"><i class="fas fa-wallet"></i></div>
         <div class="card-body">
-          <p class="label">Số dư ví</p>
-          <h2 class="value">{{ profile.wallet|default:"0" }} VNĐ</h2>
+          <p class="label">{% trans "Wallet Balance" %}</p>
+          <h2 class="value">{{ profile.wallet|default:"0" }} {% trans "VND" %}</h2>
         </div>
       </article>
 
       <article class="card">
-        <div class="card-icon">📅</div>
+        <div class="card-icon"><i class="fas fa-history"></i></div>
         <div class="card-body">
           <p class="label">Lịch sử gần nhất</p>
           <h2 class="value">{{ last_booking_date|default:"Chưa có" }}</h2>
@@ -46,17 +46,24 @@
     </section>
 
     <section class="actions">
-      {% comment %} <a href="{% url 'booking_create' %}" class="btn btn-primary"><i class="fas fa-calendar-plus"></i> Đặt chỗ trước</a>
-      <a href="{% url 'history' %}" class="btn btn-secondary"><i class="fas fa-history"></i> Xem lịch sử</a> {% endcomment %}
-      <a href="{% url 'profile' %}" class="btn btn-outline"><i class="fas fa-user"></i> Hồ sơ của tôi</a>
+      <a href="{% url 'parking_history' %}" class="btn btn-primary">
+        <i class="fas fa-car"></i> Xe của tôi & Lịch sử
+      </a>
+      <a href="{% url 'profile' %}" class="btn btn-secondary">
+        <i class="fas fa-user-circle"></i> Hồ sơ của tôi
+      </a>
+      <a href="{% url 'edit_profile' %}" class="btn btn-outline">
+        <i class="fas fa-user-edit"></i> Chỉnh sửa thông tin
+      </a>
     </section>
 
     <section class="info card info-card">
-      <h3>Ghi chú nhanh</h3>
+      <h3><i class="fas fa-info-circle"></i> Thông tin hữu ích</h3>
       <ul class="notes">
-        <li>Kiểm tra tình trạng bãi trước khi đến.</li>
-        <li>Thanh toán có thể được thực hiện qua ví hoặc tại quầy.</li>
-        <li>Liên hệ hỗ trợ khi gặp sự cố.</li>
+        <li><i class="fas fa-check-circle"></i> Kiểm tra tình trạng bãi đỗ xe trực tuyến trước khi đến.</li>
+        <li><i class="fas fa-wallet"></i> Thanh toán linh hoạt: ví điện tử hoặc trực tiếp tại quầy.</li>
+        <li><i class="fas fa-clock"></i> Cập nhật trạng thái đỗ xe theo thời gian thực.</li>
+        <li><i class="fas fa-phone-alt"></i> Hỗ trợ kỹ thuật 24/7 khi cần thiết.</li>
       </ul>
     </section>
   </main>

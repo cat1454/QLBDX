@@ -53,9 +53,30 @@
                         </fieldset>
 
                         <fieldset>
-                            <legend>Khác</legend>
-                            {{ profile_form.wallet }}
-                            <p class="muted small">Trường 'Vai trò' chỉ có thể thay đổi bởi quản trị viên.</p>
+                            <legend>Thông tin xe</legend>
+                            <div class="form-group">
+                                <label for="license_plate">
+                                    <i class="fas fa-car"></i>
+                                    Biển số xe
+                                </label>
+                                {{ profile_form.license_plate }}
+                            </div>
+                        </fieldset>
+
+                        <fieldset>
+                            <legend>Ví điện tử</legend>
+                            <div class="form-group">
+                                <label>Số dư hiện tại</label>
+                                <p class="wallet-balance">{{ profile.wallet|default:"0" }} VNĐ</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="e_wallet">
+                                    <i class="fas fa-wallet"></i>
+                                    Số tài khoản ví
+                                </label>
+                                {{ profile_form.e_wallet }}
+                            </div>
+                            <p class="muted small">Liên kết ví điện tử để thanh toán tự động.</p>
                         </fieldset>
 
                         <div class="form-actions">

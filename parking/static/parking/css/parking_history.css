@@ -1,0 +1,67 @@
+.history-page .card {
+    margin-bottom: 24px;
+}
+
+.current-parking {
+    background: linear-gradient(135deg, var(--green-1), #ffffff);
+    border-left: 4px solid var(--green-4);
+}
+
+.parking-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.parking-info p {
+    margin: 0;
+    padding: 8px;
+    background: rgba(255,255,255,0.8);
+    border-radius: 8px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    background: white;
+}
+
+.history-table th,
+.history-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+.history-table th {
+    background: var(--green-1);
+    color: var(--green-4);
+    font-weight: 600;
+}
+
+.history-table tr:hover {
+    background: #f8f9fa;
+}
+
+.credit {
+    color: var(--green-4);
+}
+
+.debit {
+    color: #e53e3e;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .history-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    
+    .parking-info {
+        grid-template-columns: 1fr;
+    }
+}
