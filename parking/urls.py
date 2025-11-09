@@ -27,4 +27,10 @@ urlpatterns = [
     path('api/check-email/', api.check_email, name='api_check_email'),
     path('api/validate-registration/', api.validate_registration, name='api_validate_registration'),
 
+    path('video_feed/<str:src>', views.video_feed, name='video_feed'),
+    path('api/stream/<str:src>', views.receive_stream, name='receive_stream'),
+    path('api/upload/', views.upload_license_plate, name='upload_license_plate'),
+    path('api/latest_detections/', views.latest_detections, name='latest_detections'),
+    path('api/toggle_barrier/', views.toggle_barrier, name='toggle_barrier'),
+   
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

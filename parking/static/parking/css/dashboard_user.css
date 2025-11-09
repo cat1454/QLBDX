@@ -1,396 +1,194 @@
-:root {
-    --primary-color: #4A90E2;
-    --secondary-color: #7FB3F5;
-    --accent-color: #B6D7FF;
-    --background-color: #F0F8FF;
-    --text-primary: #2C3E50;
-    --text-secondary: #34495E;
-    --card-background: #FFFFFF;
-    --shadow-color: rgba(74, 144, 226, 0.1);
+/* ==================== Smart Parking – Pro UI ==================== */
+/* Màu sắc có độ tương phản AA, nhấn mạnh nội dung thay vì viền ồn ào */
+:root{
+  --bg: #F6F8FB;
+  --surface: #FFFFFF;
+  --surface-2: #F2F5FA;
+  --text: #1F2937;
+  --muted: #6B7280;
+
+  --primary: #2563EB;        /* xanh lam chính */
+  --primary-600:#1D4ED8;
+  --success:#16A34A;         /* trạng thái OK */
+  --warning:#F59E0B;
+  --danger:#DC2626;
+
+  --border:#E5E7EB;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(17, 24, 39, .06);
+  --radius: 12px;
+  --radius-sm: 10px;
 }
 
-body.dashboard {
-    font-family: 'Poppins', sans-serif;
-    background-color: var(--background-color);
-    margin: 0;
-    padding: 0;
-    color: var(--text-primary);
+/* ==================== Base ==================== */
+*{ box-sizing:border-box }
+html{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale }
+body.dashboard{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue";
+  line-height:1.5;
 }
 
-.dashboard-container {
-    padding: 2rem;
+/* Spacing hệ thống */
+:root{
+  --space-1: .5rem;   /* 8px */
+  --space-2: .75rem;  /* 12px */
+  --space-3: 1rem;    /* 16px */
+  --space-4: 1.25rem; /* 20px */
+  --space-5: 1.5rem;  /* 24px */
 }
 
-.dashboard-header {
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    padding: 2rem;
-    border-radius: 15px;
-    margin-bottom: 2rem;
-    color: white;
-    box-shadow: 0 4px 6px var(--shadow-color);
+.dashboard-container{ padding: var(--space-5); }
+
+/* ==================== Header ==================== */
+.dashboard-header{
+  background:linear-gradient(180deg, #2563EB, #1D4ED8);
+  border-radius: var(--radius);
+  color:#fff;
+  box-shadow: var(--shadow);
+  padding: var(--space-4) var(--space-5);
+}
+.dashboard-header .header-content{
+  display:flex; align-items:center; justify-content:space-between; gap: var(--space-3);
+}
+.dashboard-header h1{ margin:0; font-weight:700; font-size: clamp(18px, 2.2vw, 22px); letter-spacing:.2px }
+.header-actions{ display:flex; align-items:center; gap: var(--space-2); }
+.header-actions .welcome-text{ margin:0; opacity:.95; font-weight:500 }
+.header-actions .btn{ background:#fff; color:var(--primary-600); border:1px solid #DCE5FF }
+
+/* ==================== Layout ==================== */
+.dashboard-content{
+  display:grid; gap: var(--space-5);
+  grid-template-columns: 2fr 1.1fr;     /* trái rộng, phải gọn */
+  margin-top: var(--space-5);
+}
+.stream-container{ display:grid; gap: var(--space-5); grid-template-columns: 1.2fr .8fr; }
+.stream-section{ grid-column: 1 / -1; }
+
+/* Khối (Card) dùng chung */
+.card, .detail-card, .detection-section, .stream-section, .parking-visualization{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+}
+.card h2, .card h3, .detection-section h3, .parking-visualization h3, .camera-section h2{
+  margin:0 0 var(--space-3); font-size: 14px; text-transform:uppercase; letter-spacing:.6px; color:#0F172A;
 }
 
-.header-content h1 {
-    margin: 0;
-    font-size: 1.8rem;
-    font-weight: 600;
+/* ==================== Camera ==================== */
+#camera-stream{
+  width:100%; height:auto; max-height: 420px; object-fit:cover;
+  border-radius: var(--radius-sm);
+  border:1px solid var(--border);
+  background:#000;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.action-buttons{ display:flex; gap: var(--space-2); margin-top: var(--space-3); }
+.btn{
+  appearance:none; border:none; cursor:pointer; user-select:none;
+  font-weight:600; font-size: 14px;
+  padding: .65rem .9rem; border-radius:10px;
+  transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+}
+.btn:active{ transform: translateY(1px) }
+.btn-primary{ background:var(--primary); color:#fff }
+.btn-primary:hover{ background:var(--primary-600) }
+.btn-secondary{ background:var(--surface-2); color:var(--text); border:1px solid var(--border) }
+.btn-secondary:hover{ background:#eaf0fb }
+
+/* Trạng thái tập trung – hỗ trợ bàn phím */
+.btn:focus-visible{
+  outline: 3px solid rgba(37,99,235,.35);
+  outline-offset:2px;
 }
 
-.welcome-text {
-    margin: 0.5rem 0 0;
-    opacity: 0.9;
-    font-size: 1.1rem;
+/* ==================== Sơ đồ bãi xe ==================== */
+.parking-visualization .status-header{
+  display:flex; align-items:center; justify-content:space-between; gap: var(--space-3);
+}
+.occupancy-badge{
+  font-weight:700; font-size:12px; letter-spacing:.3px;
+  padding: .3rem .55rem; border-radius: 999px;
+  color:#065F46; background: #D1FAE5; border:1px solid #A7F3D0;
+}
+.parking-lot-grid{ display:grid; gap: var(--space-2); grid-template-columns: repeat(3, 1fr); margin-top: var(--space-3); }
+.parking-spot{
+  min-height: 74px; border-radius: 10px; border:1px solid var(--border);
+  background: linear-gradient(#FFFFFF, #FAFBFE);
+  position:relative; display:flex; align-items:center; justify-content:center;
+  transition: box-shadow .15s ease, transform .06s ease;
+}
+.parking-spot:hover{ box-shadow: 0 0 0 3px #E5EDFF inset }
+.spot-number{
+  position:absolute; top:6px; left:8px; font-size:12px; color:var(--muted); font-weight:700;
+}
+.parking-spot.empty{ background:#F0FDF4; border-color:#C6F6D5 }
+.parking-spot.occupied{ background:#FEF2F2; border-color:#FECACA }
+.parking-spot.error{ background:#FFFBEB; border-color:#FDE68A }
+
+.parking-legend{ display:flex; gap: 14px; margin-top: var(--space-3); color:var(--muted); font-size:13px }
+.parking-legend .legend-item{ display:flex; align-items:center; gap:6px }
+.parking-legend .spot{ width:18px; height:12px; border-radius:4px; border:1px solid var(--border); display:inline-block }
+.parking-legend .empty{ background:#F0FDF4; border-color:#C6F6D5 }
+.parking-legend .occupied{ background:#FEF2F2; border-color:#FECACA }
+.parking-legend .reserved{ background:#FFFBEB; border-color:#FDE68A }
+
+/* ==================== Nhận diện ==================== */
+.detection-section{ display:flex; flex-direction:column; gap: var(--space-4); }
+.detection-content{
+  background:var(--surface-2); border:1px solid var(--border);
+  padding: var(--space-3); border-radius: var(--radius-sm);
+}
+.detection-content img{
+  width:100%; border-radius: var(--radius-sm);
+  border:1px solid var(--border); background:#000; margin-top: var(--space-2);
 }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+/* Bảng gọn, hàng cao 40px, sticky head */
+.history-section h3{ margin:0 }
+.detection-table{
+  width:100%; border-collapse:separate; border-spacing:0; font-size:14px;
+  border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden;
 }
-
-.stat-card {
-    background: var(--card-background);
-    padding: 1.5rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px var(--shadow-color);
-    transition: transform 0.2s ease;
+.detection-table thead th{
+  background:#F8FAFF; color:#0F172A; text-align:left; font-weight:700;
+  padding:.7rem .8rem; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1;
 }
-
-.stat-card:hover {
-    transform: translateY(-5px);
+.detection-table tbody td{
+  padding:.65rem .8rem; border-bottom:1px solid var(--border); color:#111827;
 }
+.detection-table tbody tr:hover{ background:#F9FBFF }
+.detection-table a{ color:var(--primary); text-decoration:none; font-weight:600 }
+.detection-table a:hover{ text-decoration:underline }
 
-.stat-icon {
-    font-size: 2rem;
-    margin-bottom: 1rem;
+/* Badge nhỏ cho độ tin cậy (nếu muốn thêm class .conf-*) */
+.badge{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:.15rem .5rem; font-size:12px; font-weight:700 }
+.badge.ok{ background:#DCFCE7; color:#065F46; border:1px solid #A7F3D0 }
+.badge.low{ background:#FEF3C7; color:#92400E; border:1px solid #FCD34D }
+
+/* ==================== States & skeleton ==================== */
+.skeleton{
+  background: linear-gradient(90deg, #EFF3F9 25%, #F6F8FB 37%, #EFF3F9 63%);
+  background-size:400% 100%; animation:skeleton 1.2s ease-in-out infinite;
+  border-radius: var(--radius-sm);
 }
+@keyframes skeleton{ 0%{background-position:100% 50%} 100%{background-position:0 50%} }
 
-.stat-label {
-    color: var(--text-secondary);
-    margin: 0.5rem 0;
-    font-size: 0.9rem;
+/* ==================== Scrollbar (webkit) ==================== */
+::-webkit-scrollbar{ height: 10px; width: 10px }
+::-webkit-scrollbar-thumb{ background:#CFD8EA; border-radius:10px }
+::-webkit-scrollbar-thumb:hover{ background:#B9C7E6 }
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1200px){
+  .dashboard-content{ grid-template-columns: 1fr }
+  .stream-container{ grid-template-columns: 1fr }
+  #camera-stream{ max-height: 360px }
 }
-
-.stat-value {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--primary-color);
-    margin: 0;
-}
-
-.action-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.btn {
-    padding: 1rem 1.5rem;
-    border: none;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.btn i {
-    font-size: 1.1rem;
-}
-
-.btn-primary {
-    background-color: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover {
-    background-color: var(--secondary-color);
-    transform: translateY(-2px);
-}
-
-.btn-secondary {
-    background-color: var(--accent-color);
-    color: var(--text-primary);
-}
-
-.btn-secondary:hover {
-    background-color: var(--secondary-color);
-    color: white;
-    transform: translateY(-2px);
-}
-
-/* Stream and Detection Layout */
-.stream-container {
-    display: flex;
-    gap: 24px;
-    margin: 20px 0;
-}
-
-.stream-section {
-    flex: 3;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.detection-section {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-/* Camera Section */
-.camera-section img {
-    width: 100%;
-    border-radius: 12px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.action-buttons {
-    display: flex;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-/* Parking Status */
-.parking-visualization {
-    background: white;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.status-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.status-header h3 {
-    margin: 0;
-    color: var(--primary-color);
-    font-size: 1.2rem;
-}
-
-.occupancy-badge {
-    background: var(--primary-color);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 16px;
-    font-size: 0.9rem;
-    font-weight: 500;
-}
-
-/* Parking Grid */
-.parking-lot-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    padding: 20px;
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.parking-spot {
-    aspect-ratio: 1;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    padding: 15px;
-    position: relative;
-}
-
-.parking-spot .spot-number {
-    font-size: 1.5rem;
-    margin-bottom: 5px;
-}
-
-.parking-spot .sensor-status {
-    font-size: 0.8rem;
-    opacity: 0.8;
-}
-
-/* Parking Spot States */
-.parking-spot.empty {
-    background: #e8fff0;
-    border: 2px solid #98ffb3;
-    color: #00cc44;
-}
-
-.parking-spot.occupied {
-    background: #ffe8e8;
-    border: 2px solid #ffd0d0;
-    color: #e74c3c;
-}
-
-.parking-spot.error {
-    background: #f8f9fa;
-    border: 2px solid #dee2e6;
-    color: #6c757d;
-}
-
-.parking-spot.empty::after {
-    content: "Trống";
-    font-size: 0.9rem;
-    margin-top: 5px;
-}
-
-.parking-spot.occupied::after {
-    content: "Có xe";
-    font-size: 0.9rem;
-    margin-top: 5px;
-}
-
-.parking-spot.error::after {
-    content: "Lỗi cảm biến";
-    font-size: 0.9rem;
-    margin-top: 5px;
-}
-
-.parking-spot:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* Legend */
-.parking-legend {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
-}
-
-.legend-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-}
-
-.legend-item .spot {
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-}
-
-.legend-item .empty {
-    background: #e8fff0;
-    border: 1px solid #98ffb3;
-}
-
-.legend-item .occupied {
-    background: #ffe8e8;
-    border: 1px solid #ffd0d0;
-}
-
-.legend-item .reserved {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-}
-
-/* Detection Section */
-.latest-detection {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.latest-detection h3 {
-    margin: 0 0 16px 0;
-    color: var(--primary-color);
-}
-
-.detection-content {
-    text-align: center;
-}
-
-.detection-content img {
-    width: 100%;
-    border-radius: 8px;
-    margin-top: 12px;
-}
-
-.history-section {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.history-section h3 {
-    margin: 0 0 16px 0;
-    color: var(--primary-color);
-}
-
-.detection-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.detection-table th, .detection-table td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}
-
-.detection-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.detection-table td {
-    font-size: 0.9rem;
-}
-
-.detection-table tr:hover {
-    background: #f5f5f5;
-}
-
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .stream-container {
-        flex-direction: column;
-    }
-    
-    .stream-section, .detection-section {
-        flex: none;
-    }
-}
-
-@media (max-width: 768px) {
-    .dashboard-container {
-        padding: 1rem;
-    }
-    
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .action-buttons {
-        grid-template-columns: 1fr;
-    }
-    
-    .parking-legend {
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-    }
+@media (max-width: 640px){
+  .dashboard-container{ padding: var(--space-3) }
+  .dashboard-header{ border-radius: 10px }
+  .card, .detail-card, .detection-section, .stream-section, .parking-visualization{ padding: var(--space-3) }
 }

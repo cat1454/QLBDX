@@ -1,20 +1,21 @@
-{% extends 'parking/base.html' %}
+<!DOCTYPE html>
+<html lang="vi">
 {% load static %}
-{% load i18n %}
-
-{% block title %}{% trans "Customer Dashboard" %} - Smart Parking{% endblock %}
-
-{% block extra_css %}
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Customer Dashboard - Smart Parking</title>
   <link rel="stylesheet" href="{% static 'parking/css/dashboard_cus.css' %}">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-{% endblock %}
-{% block content %}
-<div class="customer-dashboard">
+</head>
+<body class="customer-dashboard">
+   
+
   <header class="cust-header">
     <div class="container">
-      <p class="subtitle">
-        {% blocktrans with name=user.get_full_name|default:user.username %}Welcome, {{ name }}!{% endblocktrans %}
-      </p>
+   <p class="subtitle">
+  Chào mừng, {{ user.get_full_name|default:user.username }}!
+</p>
     </div>
   </header>
 
@@ -23,7 +24,7 @@
       <article class="card">
         <div class="card-icon"><i class="fas fa-ticket-alt"></i></div>
         <div class="card-body">
-          <p class="label">{% trans "Remaining Bookings" %}</p>
+          <p class="label">Lượt đặt còn lại</p>
           <h2 class="value">{{ bookings_count|default:"0" }}</h2>
         </div>
       </article>
@@ -31,8 +32,8 @@
       <article class="card">
         <div class="card-icon"><i class="fas fa-wallet"></i></div>
         <div class="card-body">
-          <p class="label">{% trans "Wallet Balance" %}</p>
-          <h2 class="value">{{ profile.wallet|default:"0" }} {% trans "VND" %}</h2>
+          <p class="label">Số dư ví</p>
+          <h2 class="value">{{ profile.wallet|default:"0" }} VNĐ</h2>
         </div>
       </article>
 

@@ -2,208 +2,266 @@ from django.http import StreamingHttpResponse, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User, Group
+from django.contrib import messages
+from django.db import transaction
 from django.urls import reverse
+from django.core.exceptions import ValidationError
+from django.core.files.storage import default_storage
+from django.conf import settings
+
 from datetime import datetime
 from collections import deque
 import threading
+import time
+import os
 import json
-import cv2
-import numpy as np
+import uuid
 
-# Global variables for stream handling
-streams = {}
-stream_locks = {}
-detection_history = deque(maxlen=200)  # Keep last 200 detections
+from .forms import CustomUserCreationForm, LoginForm, ProfileUpdateForm, UserUpdateForm
+from .models import Profile
 
-def get_stream_frame(camera_id):
-    """Get the latest frame from a specific camera stream"""
-    if camera_id in streams and streams[camera_id]:
-        with stream_locks[camera_id]:
-            return streams[camera_id]
+# ==========================================================
+# STREAM MANAGEMENT (Raspberry Pi camera)
+# ==========================================================
+
+streams = {}                    # src -> latest jpeg frame (bytes)
+stream_locks = {}               # src -> threading.Lock()
+stream_lock_global = threading.Lock()  # bảo vệ dict streams & stream_locks
+
+# History nhận diện biển số (thread-safe)
+detection_history = deque(maxlen=200)
+history_lock = threading.Lock()
+
+# Giới hạn kích thước frame & ảnh upload
+MAX_FRAME_SIZE = 1024 * 1024  # 1MB
+MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5MB
+
+
+def get_stream_frame(src):
+    with stream_lock_global:
+        if src in streams:
+            with stream_locks[src]:
+                return streams[src]
     return None
 
-def gen_frames(camera_id):
-    """Generator for video stream frames"""
+
+def gen_mjpeg(src):
+    boundary = b'--frame\r\n'
     while True:
-        frame = get_stream_frame(camera_id)
-        if frame is not None:
-            yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        frame = get_stream_frame(src)
+        if frame:
+            yield boundary + b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n'
+        else:
+            time.sleep(0.05)
+
+
+@csrf_exempt
+def receive_stream(request, src):
+    """Raspberry Pi POST frame JPEG liên tục"""
+    if request.method != 'POST':
+        return HttpResponse("Only POST allowed", status=405)
+
+    if len(request.body) > MAX_FRAME_SIZE:
+        return HttpResponse("Frame too large", status=413)
+
+    with stream_lock_global:
+        if src not in stream_locks:
+            stream_locks[src] = threading.Lock()
+        with stream_locks[src]:
+            streams[src] = request.body
+
+    return HttpResponse("OK", status=200)
+
 
 @login_required
-def video_feed(request, camera_id):
-    """View for video stream"""
+def video_feed(request, src):
     return StreamingHttpResponse(
-        gen_frames(camera_id),
+        gen_mjpeg(src),
         content_type='multipart/x-mixed-replace; boundary=frame'
     )
 
-@csrf_exempt
-def stream_upload(request):
-    """API endpoint for receiving camera frames"""
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            camera_id = data.get('camera_id')
-            frame_data = data.get('frame')
-            
-            if camera_id is None or frame_data is None:
-                return JsonResponse({"status": "error", "message": "Missing camera_id or frame"}, status=400)
+# ==========================================================
+# BIỂN SỐ & NHẬN DIỆN
+# ==========================================================
 
-            # Initialize lock for new camera
-            if camera_id not in stream_locks:
-                stream_locks[camera_id] = threading.Lock()
-            
-            # Store frame
-            with stream_locks[camera_id]:
-                streams[camera_id] = frame_data.encode('utf-8')
-            
-            return JsonResponse({"status": "ok"})
-        except json.JSONDecodeError:
-            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
-            
-    return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
+@csrf_exempt
+def upload_license_plate(request):
+    """Raspberry Pi gửi ảnh + thông tin biển số"""
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "msg": "Invalid method"})
+
+    try:
+        plate = request.POST.get("plate", "").strip()
+        confidence = request.POST.get("confidence", "")
+        source = request.POST.get("source", "")
+        image_file = request.FILES.get("image")
+
+        if not image_file:
+            return JsonResponse({"status": "error", "msg": "No image received"})
+
+        if image_file.size > MAX_UPLOAD_SIZE:
+            return JsonResponse({"status": "error", "msg": "Image too large"})
+
+        # Tạo tên file unique
+        ext = os.path.splitext(image_file.name)[1]
+        filename = f"uploads/plate_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex}{ext}"
+        filepath = default_storage.save(filename, image_file)
+        full_path = default_storage.path(filepath)
+
+        # Lưu vào history (thread-safe)
+        record = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "plate": plate,
+            "conf": confidence,
+            "src": source,
+            "path": filepath
+        }
+
+        with history_lock:
+            # Nếu deque đầy -> xóa file cũ
+            if len(detection_history) == detection_history.maxlen:
+                old = detection_history[0]
+                if default_storage.exists(old["path"]):
+                    default_storage.delete(old["path"])
+            detection_history.append(record)
+
+        print(f"Received plate {plate} from {source} ({confidence}%) -> {filepath}")
+
+        return JsonResponse({
+            "status": "ok",
+            "plate": plate,
+            "confidence": confidence,
+            "file": f"/media/{filepath}"
+        })
+
+    except Exception as e:
+        return JsonResponse({"status": "error", "msg": str(e)})
+
 
 @login_required
 def latest_detections(request):
-    """API endpoint for getting latest detections"""
-    latest = detection_history[-1] if detection_history else None
+    """API cho dashboard lấy lịch sử nhận diện"""
+    with history_lock:
+        history_list = list(detection_history)
+        latest = history_list[-1] if history_list else None
+
     return JsonResponse({
         "latest": latest,
-        "history": list(detection_history)
+        "history": history_list,
+        "total": len(history_list)
     })
 
-@csrf_exempt
-@login_required
-def upload_detection(request):
-    """API endpoint for receiving license plate detections"""
-    if request.method == 'POST':
-        detection = {
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "plate": request.POST.get("plate", ""),
-            "conf": request.POST.get("confidence", ""),
-            "src": request.POST.get("source", "unknown")
-        }
-        
-        if 'image' in request.FILES:
-            # Handle image upload here
-            pass
-            
-        detection_history.append(detection)
-        return JsonResponse({"status": "ok"})
-    return JsonResponse({"status": "error"}, status=405)
 
 @login_required
 def get_parking_status(request):
-    """API endpoint for getting parking lot status"""
-    # Implement your parking status logic here
+    """Trạng thái bãi xe (có thể mở rộng kết nối DB sau)"""
     status = {
-        str(i): {
-            "occupied": False,
-            "plate": None,
-            "entry_time": None
-        } for i in range(1, 7)
+        str(i): {"occupied": False, "plate": None, "entry_time": None}
+        for i in range(1, 7)
     }
+    occupied = sum(1 for v in status.values() if v["occupied"])
     return JsonResponse({
         "status": status,
         "total_spots": 6,
-        "occupied_spots": 0
+        "occupied_spots": occupied
     })
+
 
 @csrf_exempt
 @login_required
 def toggle_barrier(request):
-    """API endpoint for controlling the barrier"""
     if request.method == 'POST':
-        # Implement your barrier control logic here
-        return JsonResponse({
-            "status": "ok",
-            "message": "Đã điều khiển barrier"
-        })
-    return JsonResponse({"status": "error"}, status=405)
+        # TODO: Gửi lệnh GPIO hoặc MQTT tới barrier
+        return JsonResponse({"status": "ok", "message": "Barrier toggled"})
+    return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
 
-def test_connection(request):
-    """Simple endpoint for testing server connection"""
-    return HttpResponse("django-server"), redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.contrib import messages
 
-from parking.form import ProfileUpdateForm, UserUpdateForm
-from parking.models import Profile
+# ==========================================================
+# AUTH & USER MANAGEMENT
+# ==========================================================
 
 def home(request):
-    # Đảm bảo người dùng bắt đầu ở trạng thái đăng xuất khi vào trang home
-    if request.user.is_authenticated:
-        logout(request)
-    
     context = {
         'available_slots': 12,
         'total_slots': 20,
-        'price_per_hour': 10000,
+        'price_per_hour': 10000
     }
     return render(request, 'parking/home.html', context)
 
 
-def register_view(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        email = request.POST['email']
-        password1 = request.POST['password1']
-        password2 = request.POST['password2']
-        role = request.POST['role']
-
-        # Kiểm tra hợp lệ
-        if password1 != password2:
-            messages.error(request, 'Mật khẩu không khớp!')
-            return redirect('register')
-
-        if User.objects.filter(username=username).exists():
-            messages.error(request, 'Tên đăng nhập đã tồn tại!')
-            return redirect('register')
-
-        # Tạo user
-        user = User.objects.create_user(username=username, email=email, password=password1)
-        user.first_name = role  # lưu tạm role trong first_name (hoặc bạn có thể tạo model Profile riêng sau)
-        user.save()
-
-        messages.success(request, 'Đăng ký thành công! Vui lòng đăng nhập.')
-        return redirect('login')
-
-    return render(request, 'parking/register.html')
-
-
 def login_view(request):
-    if request.method == 'POST':
-        username = request.POST['username']
-        password = request.POST['password']
+    if request.user.is_authenticated:
+        return redirect_to_dashboard(request.user)
+
+    form = LoginForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        username = form.cleaned_data['username']
+        password = form.cleaned_data['password']
+        remember = form.cleaned_data.get('remember', False)
+
         user = authenticate(request, username=username, password=password)
-
-        if user is not None:
+        if user and user.is_active:
             login(request, user)
-            role = user.first_name  # lấy role đã lưu khi đăng ký
-            
-            # Chuyển hướng dựa trên vai trò
-            if role == 'Admin':
-                return redirect('dashboard_admin')
-            elif role == 'User':
-                return redirect('dashboard_user')
-            elif role == 'Customer':
-                return redirect('dashboard_customer')
-            else:
-                messages.error(request, 'Vai trò không hợp lệ!')
-                return redirect('home')
-        else:
-            messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng!')
+            if not remember:
+                request.session.set_expiry(0)
+            return redirect_to_dashboard(user)
 
-    return render(request, 'parking/login.html')
+        messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng.')
+
+    return render(request, 'parking/login.html', {'form': form})
 
 
+def redirect_to_dashboard(user):
+    profile = getattr(user, "profile", None)
+    if profile and profile.role == "Admin":
+        return redirect('dashboard_admin')
+    elif profile and profile.role == "User":
+        return redirect('dashboard_user')
+    else:
+        return redirect('dashboard_customer')
+
+
+def register_view(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        try:
+            with transaction.atomic():
+                if form.is_valid():
+                    user = form.save(commit=False)
+                    user.email = form.cleaned_data['email']
+                    user.save()
+
+                    role = request.POST.get('role', 'Customer')
+                    profile = Profile.objects.create(user=user, role=role)
+                    group, _ = Group.objects.get_or_create(name=role)
+                    user.groups.add(group)
+                    login(request, user)
+
+                    return JsonResponse({
+                        'success': True,
+                        'redirect': reverse('dashboard_customer' if role == 'Customer' else 'dashboard_user'),
+                        'message': 'Đăng ký thành công'
+                    })
+                else:
+                    return JsonResponse({'success': False, 'errors': form.errors})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'parking/register.html', {'form': form})
+
+
+@login_required
 def logout_view(request):
     logout(request)
-    return redirect('home')
-from django.contrib.auth.decorators import login_required
+    messages.success(request, 'Đã đăng xuất.')
+    return redirect('login')
+
 
 @login_required(login_url='login')
 def dashboard_admin(request):
@@ -218,27 +276,25 @@ def dashboard_user(request):
 @login_required(login_url='login')
 def dashboard_customer(request):
     return render(request, 'parking/dashboard_customer.html', {'user': request.user})
+
+
 @login_required(login_url='login')
 def profile_view(request):
-    # Nếu user chưa có profile thì tự tạo mới
-    profile, created = Profile.objects.get_or_create(
-        user=request.user,
-        defaults={
-            'role': 'Customer',
-            'wallet': 0
-        }
-    )
-    return render(request, 'parking/profile.html', {'profile': profile})
+    profile, _ = Profile.objects.get_or_create(user=request.user, defaults={'role': 'Customer', 'wallet': 0})
+    transactions = getattr(profile, 'transaction_set', None)
+    recent_tx = transactions.order_by('-timestamp')[:5] if transactions else []
+    return render(request, 'parking/profile.html', {
+        'profile': profile,
+        'transactions': recent_tx
+    })
 
-# Cập nhật profile
+
 @login_required(login_url='login')
 def edit_profile(request):
-    profile = request.user.profile
-
+    profile = Profile.objects.get_or_create(user=request.user)[0]
     if request.method == 'POST':
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
-        
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
@@ -252,188 +308,12 @@ def edit_profile(request):
         'user_form': user_form,
         'profile_form': profile_form,
     })
-    
-import os
-
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-
-@csrf_exempt
-def upload_license_plate(request):
-    """Nhận dữ liệu từ Raspberry Pi: ảnh + thông tin biển số"""
-    if request.method == "POST":
-        try:
-            plate = request.POST.get("plate", "")
-            confidence = request.POST.get("confidence", "")
-            source = request.POST.get("source", "")
-            image_file = request.FILES.get("image")
-
-            if not image_file:
-                return JsonResponse({"status": "error", "msg": "No image received"})
-
-            # Lưu ảnh vào thư mục media/uploads/
-            filename = default_storage.save(f"uploads/{image_file.name}", image_file)
-
-            # (Tùy chọn) lưu vào DB nếu có model LicensePlateLog
-            # LicensePlateLog.objects.create(
-            #     plate=plate, confidence=confidence, source=source, image=filename
-            # )
-
-            print(f"✅ Received {plate} from {source} ({confidence})")
-
-            return JsonResponse({
-                "status": "ok",
-                "plate": plate,
-                "confidence": confidence,
-                "file": filename
-            })
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "msg": str(e)})
-
-    return JsonResponse({"status": "error", "msg": "Invalid method"})
-
-@csrf_exempt
-def receive_stream(request, source_name):
-    """Nhận stream từ Raspberry Pi (POST từng frame MJPEG)."""
-    if request.method == 'POST':
-        try:
-            os.makedirs('media/streams', exist_ok=True)
-            frame_path = f'media/streams/{source_name}.jpg'
-            with open(frame_path, 'wb') as f:
-                f.write(request.body)
-            return HttpResponse("OK", status=200)
-        except Exception as e:
-            return HttpResponse(str(e), status=500)
-    return HttpResponse("Only POST allowed", status=405)
-
-from django.http import StreamingHttpResponse
-from django.views.decorators import gzip
-
-import os
-import time
 
 
+@login_required
 def parking_history(request):
-    # render template lịch sử
     return render(request, 'parking/parking_history.html')
 
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from .form import CustomUserCreationForm, LoginForm
-from .models import Profile
-from django.contrib.auth.models import Group
 
-def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-        
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            remember = form.cleaned_data.get('remember')
-            
-            try:
-                user = authenticate(username=username, password=password)
-                if user is not None:
-                    if user.is_active:
-                        login(request, user)
-                        if not remember:
-                            request.session.set_expiry(0)
-                        
-                        # Redirect based on role
-                        profile = user.profile
-                        if profile.role == 'Admin' or user.is_superuser:
-                            return redirect('dashboard_admin')
-                        elif profile.role == 'User':
-                            return redirect('dashboard_user')
-                        else:
-                            return redirect('dashboard_customer')
-                    else:
-                        messages.error(request, 'Tài khoản đã bị vô hiệu hóa.')
-                else:
-                    messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng.')
-            except Exception as e:
-                messages.error(request, f'Lỗi đăng nhập: {str(e)}')
-    else:
-        form = LoginForm()
-    
-    return render(request, 'parking/login.html', {'form': form})
-
-def register_view(request):
-    if request.user.is_authenticated:
-        return JsonResponse({
-            'success': False,
-            'message': 'Bạn đã đăng nhập rồi'
-        })
-        
-    if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
-        try:
-            with transaction.atomic():
-                if form.is_valid():
-                    user = form.save(commit=False)
-                    user.email = form.cleaned_data['email']
-                    user.save()
-
-                    # Create profile
-                    role = request.POST.get('role', 'Customer')
-                    profile = Profile.objects.create(
-                        user=user,
-                        role=role
-                    )
-
-                    # Add to group
-                    group, _ = Group.objects.get_or_create(name=role)
-                    user.groups.add(group)
-
-                    # Auto login after registration
-                    login(request, user)
-                    
-                    # Return success response
-                    return JsonResponse({
-                        'success': True,
-                        'redirect': reverse('dashboard_customer' if role == 'Customer' else 'home'),
-                        'message': 'Đăng ký thành công'
-                    })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.',
-                        'errors': form.errors
-                    })
-        except ValidationError as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Lỗi xác thực: {e.message}'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Lỗi đăng ký: {str(e)}'
-            })
-    else:
-        return render(request, 'parking/register.html', {'form': CustomUserCreationForm()})
-
-@login_required
-def logout_view(request):
-    logout(request)
-    messages.success(request, 'Đã đăng xuất thành công.')
-    return redirect('login')
-
-@login_required
-def profile_view(request):
-    profile = request.user.profile
-    context = {
-        'profile': profile,
-        'transactions': profile.transaction_set.order_by('-timestamp')[:5]
-    }
-    return render(request, 'parking/profile.html', context)
+def test_connection(request):
+    return HttpResponse("django-server-ok")

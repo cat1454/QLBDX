@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="vi">
 {% load static %}
+<meta name="csrf-token" content="{{ csrf_token }}">
 <head>
     <meta charset="UTF-8">
     <title>User Dashboard - Smart Parking</title>
@@ -27,8 +28,14 @@
                 <div class="stream-section">
                     <div class="camera-section">
                         <h2>🎥 Camera Giám Sát</h2>
-                        <img src="http://192.168.1.184:8000{% url 'video_feed' camera_id=1 %}" width="100%" class="rounded-lg shadow">
-                        
+                        {% comment %} <img src="http://192.168.1.184:8000{% url 'video_feed' camera_id=1 %}" width="100%" class="rounded-lg shadow"> {% endcomment %}
+                        <img src="{% url 'video_feed' src='raspberrypi_cam' %}"
+     width="50%"
+     class="rounded-lg shadow"
+     id="camera-stream"
+     alt="Live camera stream không khả dụng">
+                    </div>
+
                         <div class="action-buttons" style="margin-top: 20px;">
                             <button class="btn btn-primary" id="toggle-barrier">
                                 <i class="fas fa-barrier-gate"></i>
@@ -100,214 +107,128 @@
     </div>
 
     <!-- Font Awesome -->
-    <script src="https://kit.fontawesome.com/your-code.js" crossorigin="anonymous"></script>
-    
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+
     <!-- Detection Updates -->
-    <script>
-        // Cấu hình
-        const TOTAL_SPOTS = 6; // 6 chỗ đỗ xe
-        const SPOTS_PER_ROW = 3; // 3 ô mỗi hàng
+  <script>
+    // ⚙️ Cấu hình
+    const TOTAL_SPOTS = 6;
+    let sensorStates = {};
 
-        // Khởi tạo trạng thái cảm biến rỗng
-        let sensorStates = {};
-        
-        // Hàm lấy trạng thái bãi đỗ xe từ server
-        async function fetchParkingStatus() {
-            try {
-                {% comment %} const response = await fetch('{% url "get_parking_status" %}'); {% endcomment %}
-                const data = await response.json();
-                
-                // Cập nhật trạng thái cảm biến
-                Object.entries(data.status).forEach(([spot, info]) => {
-                    sensorStates[spot] = !info.occupied;
-                });
-                
-                // Cập nhật thông tin chi tiết
-                Object.entries(data.status).forEach(([spot, info]) => {
-                    const spotElement = document.getElementById(`spot-${spot}`);
-                    if (spotElement) {
-                        if (info.occupied) {
-                            spotElement.title = `Vị trí ${spot}\nBiển số: ${info.plate}\nVào lúc: ${info.entry_time}`;
-                        } else {
-                            spotElement.title = `Vị trí ${spot}\nTrống`;
-                        }
-                    }
-                });
-                
-                return data;
-            } catch (error) {
-                console.error('Error fetching parking status:', error);
-                return null;
-            }
-        };
+    // 🚗 Hàm lấy trạng thái bãi đỗ xe
+    async function fetchParkingStatus() {
+        try {
+            {% comment %} const response = await fetch("{% url 'get_parking_status' %}"); {% endcomment %}
+            const data = await response.json();
 
-        // Khởi tạo grid bãi đỗ xe
-        function initializeParkingLot() {
-            const grid = document.getElementById('parking-lot-grid');
-            for (let i = 1; i <= TOTAL_SPOTS; i++) {
-                const spot = document.createElement('div');
-                spot.className = 'parking-spot';
-                spot.id = `spot-${i}`;
-                
-                // Tạo cấu trúc nội dung cho mỗi ô
-                spot.innerHTML = `
-                    <span class="spot-number">${i}</span>
-                    <span class="sensor-status"></span>
-                `;
-                
-                spot.title = `Vị trí ${i}`;
-                grid.appendChild(spot);
-            }
-            updateParkingStatus(); // Cập nhật trạng thái ban đầu
-        }
-
-        // Cập nhật trạng thái dựa trên dữ liệu cảm biến
-        function updateParkingStatus() {
-            // Trong thực tế, sẽ gọi API để lấy trạng thái cảm biến
-            // Ví dụ: fetch('/api/sensor-status').then(r => r.json()).then(data => { sensorStates = data; })
-            
-            Object.entries(sensorStates).forEach(([spotId, status]) => {
-                const spot = document.getElementById(`spot-${spotId}`);
-                if (!spot) return;
-
-                // Xóa các class cũ
-                spot.classList.remove('empty', 'occupied', 'error');
-
-                // Cập nhật trạng thái mới
-                if (status === null) {
-                    spot.classList.add('error');
-                } else if (status === true) {
-                    spot.classList.add('empty');
-                } else {
-                    spot.classList.add('occupied');
-                }
+            Object.entries(data.status).forEach(([spot, info]) => {
+                sensorStates[spot] = !info.occupied;
             });
-
-            // Cập nhật tỷ lệ sử dụng
-            const occupied = Object.values(sensorStates).filter(s => s === false).length;
-            const occupancyRate = ((occupied / TOTAL_SPOTS) * 100).toFixed(1);
-            document.getElementById('occupancy-rate').textContent = `${occupancyRate}%`;
-        }
-
-        function updateDetections() {
-            // Gọi API để lấy dữ liệu phát hiện và trạng thái bãi đỗ
-            Promise.all([
-                fetch('{% url "latest_detections" %}'),
-                {% comment %} fetch('{% url "get_parking_status" %}') {% endcomment %}
-            ])
-            .then(responses => Promise.all(responses.map(r => r.json())))
-            .then(([detectionData, parkingData]) => {
-                // Cập nhật phát hiện mới nhất
-                if (detectionData.latest) {
-                    document.getElementById('latest-detection').innerHTML = `
-                        <h3>📸 Phát hiện mới nhất</h3>
-                        <div class="detection-content">
-                            <div><b>${detectionData.latest.time}</b></div>
-                            <div>Biển số: <em>${detectionData.latest.plate}</em></div>
-                            <div>Độ tin cậy: ${detectionData.latest.conf}</div>
-                            ${detectionData.latest.path ? `<img src="/${detectionData.latest.path}?t=${Date.now()}" alt="latest">` : ''}
-                        </div>
-                    `;
-                }
-
-                    // Cập nhật bảng lịch sử
-                    let historyHTML = '';
-                    for (let i = data.history.length - 1; i >= Math.max(0, data.history.length - 10); i--) {
-                        const p = data.history[i];
-                        historyHTML += `
-                            <tr>
-                                <td>${p.time.split(' ')[1]}</td>
-                                <td>${p.plate}</td>
-                                <td>${p.conf}</td>
-                                <td>${p.path ? `<a href="/${p.path}" target="_blank">Xem</a>` : '-'}</td>
-                            </tr>
-                        `;
-                    }
-                    document.getElementById('detection-history').innerHTML = historyHTML;
-
-                    // Ước tính số xe hiện tại (30% số xe vào vẫn trong bãi)
-                    const currentVehicles = Math.round(data.history.length * 0.3);
-                    const occupancyRate = (currentVehicles / TOTAL_SPOTS * 100).toFixed(1);
-                    
-                    // Cập nhật hiển thị bãi đỗ
-                    document.getElementById('occupancy-rate').textContent = `${occupancyRate}%`;
-                    updateParkingStatus(currentVehicles);
-                });
-        }
-
-        // Khởi tạo bãi đỗ xe
-        initializeParkingLot();
-
-        // Cập nhật định kỳ
-        function startUpdates() {
-            // Cập nhật phát hiện và trạng thái bãi đỗ
-            setInterval(async () => {
-                await updateDetections();
-                await fetchParkingStatus();
-                updateParkingStatus();
-            }, 3000);
-            
-            // Cập nhật ngay lập tức
-            updateDetections();
-            fetchParkingStatus().then(() => updateParkingStatus());
-        }
-
-        // Bắt đầu cập nhật
-        startUpdates();
-
-        // Xử lý nút barrier
-        document.getElementById('toggle-barrier').addEventListener('click', async function() {
-            try {
-                {% comment %} const response = await fetch('{% url "toggle_barrier" %}', { {% endcomment %}
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                });
-                const data = await response.json();
-                alert(data.message);
-            } catch (error) {
-                console.error('Error toggling barrier:', error);
-                alert('Lỗi khi điều khiển barrier');
-            }
-        });
-
-        // Nút làm mới
-        document.getElementById('refresh-data').addEventListener('click', updateDetections);
-
-        // Giả lập cập nhật từ cảm biến
-        function simulateSensorUpdate() {
-            // Trong thực tế, đây sẽ là WebSocket hoặc polling để nhận dữ liệu cảm biến
-            setInterval(() => {
-                // Giả lập thay đổi ngẫu nhiên cho demo
-                const randomSpot = Math.floor(Math.random() * TOTAL_SPOTS) + 1;
-                const randomStatus = Math.random() > 0.8 ? null : Math.random() > 0.5;
-                sensorStates[randomSpot] = randomStatus;
-                updateParkingStatus();
-            }, 5000); // Cập nhật mỗi 5 giây
-        }
-
-        // Xử lý click vào ô đỗ xe
-        document.querySelector('.parking-lot-grid').addEventListener('click', function(e) {
-            const spot = e.target.closest('.parking-spot');
-            if (!spot) return;
-
-            const spotId = spot.id.split('-')[1];
-            const status = sensorStates[spotId];
-            const statusText = status === null ? 'Lỗi cảm biến' :
-                             status === true ? 'Đang trống' : 'Có xe đang đỗ';
-            
-            alert(`Vị trí ${spotId}:\n${statusText}\nCập nhật lần cuối: ${new Date().toLocaleTimeString()}`);
-        });
-
-        // Bắt đầu giả lập cập nhật cảm biến (chỉ để demo)
-        simulateSensorUpdate();
-
-        // Nút làm mới
-        document.getElementById('refresh-data').addEventListener('click', function() {
             updateParkingStatus();
-            updateDetections();
+            return data;
+        } catch (error) {
+            console.error("❌ Lỗi lấy trạng thái bãi xe:", error);
+            return null;
+        }
+    }
+
+    // 🅿️ Tạo grid bãi xe
+    function initializeParkingLot() {
+        const grid = document.getElementById("parking-lot-grid");
+        for (let i = 1; i <= TOTAL_SPOTS; i++) {
+            const spot = document.createElement("div");
+            spot.className = "parking-spot";
+            spot.id = `spot-${i}`;
+            spot.innerHTML = `<span class="spot-number">${i}</span><span class="sensor-status"></span>`;
+            grid.appendChild(spot);
+        }
+        updateParkingStatus();
+    }
+
+    // 🔄 Cập nhật trạng thái bãi đỗ
+    function updateParkingStatus() {
+        Object.entries(sensorStates).forEach(([spotId, status]) => {
+            const spot = document.getElementById(`spot-${spotId}`);
+            if (!spot) return;
+            spot.classList.remove("empty", "occupied", "error");
+            if (status === null) spot.classList.add("error");
+            else if (status === true) spot.classList.add("empty");
+            else spot.classList.add("occupied");
         });
-    </script>
+
+        const occupied = Object.values(sensorStates).filter(s => s === false).length;
+        const occupancyRate = ((occupied / TOTAL_SPOTS) * 100).toFixed(1);
+        document.getElementById("occupancy-rate").textContent = `${occupancyRate}%`;
+    }
+
+    // 📸 Lấy dữ liệu nhận diện từ Django
+    async function updateDetections() {
+        try {
+            const response = await fetch("{% url 'latest_detections' %}");
+            const data = await response.json();
+
+            // ✅ Hiển thị phát hiện mới nhất
+            if (data.latest) {
+                document.getElementById("latest-detection").innerHTML = `
+                    <h3>📸 Phát hiện mới nhất</h3>
+                    <div class="detection-content">
+                        <div><b>${data.latest.time}</b></div>
+                        <div>Biển số: <em>${data.latest.plate}</em></div>
+                        <div>Độ tin cậy: ${data.latest.conf}</div>
+                        ${data.latest.path ? `<img src="/media/${data.latest.path}" alt="latest" style="width:100%;border-radius:8px;margin-top:6px;">` : ""}
+                    </div>
+                `;
+            }
+
+            // ✅ Bảng lịch sử
+            let historyHTML = "";
+            const history = data.history || [];
+            for (let i = history.length - 1; i >= Math.max(0, history.length - 10); i--) {
+                const p = history[i];
+                historyHTML += `
+                    <tr>
+                        <td>${p.time}</td>
+                        <td>${p.plate}</td>
+                        <td>${p.conf}</td>
+                        <td>${p.path ? `<a href="/media/${p.path}" target="_blank">Xem</a>` : "-"}</td>
+                    </tr>
+                `;
+            }
+            document.getElementById("detection-history").innerHTML = historyHTML;
+        } catch (error) {
+            console.error("❌ Lỗi cập nhật nhận diện:", error);
+        }
+    }
+
+    // 🚀 Khởi tạo
+    initializeParkingLot();
+    fetchParkingStatus();
+    updateDetections();
+
+    // 🔁 Cập nhật định kỳ mỗi 3 giây
+    setInterval(() => {
+        updateDetections();
+        fetchParkingStatus();
+    }, 3000);
+
+ // 🧱 Barrier control
+document.getElementById("toggle-barrier").addEventListener("click", async () => {
+    try {
+        /*
+        const response = await fetch("{% url 'toggle_barrier' %}", {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token }}" }
+        });
+        const data = await response.json();
+        alert(data.message);
+        */
+        alert("🔧 Barrier control temporarily disabled (đã comment code).");
+    } catch (error) {
+        alert("Lỗi khi điều khiển barrier");
+    }
+});
+
+</script>
+
 </body>
 </html>
