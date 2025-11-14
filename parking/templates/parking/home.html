@@ -12,7 +12,7 @@
 <body>
     <nav class="top-nav">
         <div class="nav-brand">
-            <img src="{% static 'parking/media/avatars/logo.png' %}" alt="Logo" class="logo">
+            <img src="{% static 'parking/images/logo.png' %}" alt="Logo" class="logo">
             <span>Smart Parking</span>
         </div>
         <div class="nav-links">
@@ -26,7 +26,7 @@
                 <a href="{% url 'login' %}" class="btn btn-outline">{% trans "Login" %}</a>
                 <a href="{% url 'register' %}" class="btn btn-primary">{% trans "Register" %}</a>
             {% endif %}
-            <div class="language-selector">
+            {% comment %} <div class="language-selector">
                 <form action="{% url 'set_language' %}" method="post" id="language-form">
                     {% csrf_token %}
                     <input name="next" type="hidden" value="{{ request.path }}">
@@ -40,7 +40,7 @@
                         {% endfor %}
                     </select>
                 </form>
-            </div>
+            </div> {% endcomment %}
         </div>
     </nav>
 

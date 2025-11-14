@@ -38,6 +38,7 @@
 .login-logo {
     height: 40px;
     width: auto;
+    border-radius: 50%;
 }
 
 .login-form {
@@ -190,4 +191,4 @@
         gap: 10px;
         align-items: flex-start;
     }
-}
+}  

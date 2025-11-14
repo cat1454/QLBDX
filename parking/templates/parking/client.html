@@ -1,0 +1,110 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Remote Barrier Client</title>
+<style>
+    body { 
+        display: flex;
+        flex-direction: row;
+        font-family: Arial; 
+        padding: 20px; 
+    }
+    .bar { 
+        border: 1px solid #ddd; 
+        padding: 10px; 
+        margin: 10px 0;
+    }
+    .dist {
+        margin-bottom: 1rem;
+    }
+    button { 
+        background-color: #6279ff;
+        color: white;
+        border: none;
+        border-radius: 1rem;
+        box-shadow: 0px 0px 8px 2px rgb(207, 207, 207);
+        transition: all 0.3s ease;
+        padding: 0.5rem 1rem; 
+        margin-right:8px; 
+    }
+    button:hover {
+        background-color: #3d3c9b;
+        transform: translateY(-2px);
+        cursor: pointer;
+    }
+    #info{  margin-top: 12px; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <h3>Barrier 1</h3>
+    <div class="dist" id="s1">Distance: - cm | State: -</div>
+    <button onclick="cmd('B1 OPEN')">Open</button>
+    <button onclick="cmd('B1 CLOSE')">Close</button>
+    <button onclick="cmd('B1 TOGGLE')">Toggle</button>
+  </div>
+
+  <div class="bar">
+    <h3>Barrier 2</h3>
+    <div class="dist" id="s2">Distance: - cm | State: -</div>
+    <button onclick="cmd('B2 OPEN')">Open</button>
+    <button onclick="cmd('B2 CLOSE')">Close</button>
+    <button onclick="cmd('B2 TOGGLE')">Toggle</button>
+  </div>
+
+  <div id="info">Server status: <span id="status">-</span></div>
+
+<script>
+  // ⚠️ Thay bằng IP server Flask của bạn
+  const SERVER_URL = "http://172.20.10.2:5000"; 
+
+  async function cmd(command) {
+    document.getElementById('status').innerText = 'Sending ' + command;
+    try {
+      const r = await fetch(`${SERVER_URL}/cmd/${encodeURIComponent(command)}`);
+      const j = await r.json();
+      if (j.success) {
+        document.getElementById('status').innerText = 'OK: ' + j.response;
+        await updateStatusFromResponse(j.response);
+      } else {
+        document.getElementById('status').innerText = 'ERR: ' + j.error;
+      }
+    } catch(e) {
+      document.getElementById('status').innerText = 'Fetch error: ' + e;
+    }
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`${SERVER_URL}/status`);
+      const j = await res.json();
+      if (j.success) {
+        document.getElementById('s1').innerText = 'Distance: ' + j.dist1 + ' cm | State: ' + j.s1;
+        document.getElementById('s2').innerText = 'Distance: ' + j.dist2 + ' cm | State: ' + j.s2;
+        document.getElementById('status').innerText = 'Connected';
+      } else {
+        document.getElementById('status').innerText = 'Not connected';
+      }
+    } catch(e) {
+      document.getElementById('status').innerText = 'Error: ' + e;
+    }
+  }
+
+  async function updateStatusFromResponse(resp) {
+    if (!resp) return;
+    const pairs = resp.split(';');
+    const map = {};
+    for (let p of pairs) {
+      const kv = p.split(':');
+      if (kv.length == 2) map[kv[0]] = kv[1];
+    }
+    if (map.DIST1) document.getElementById('s1').innerText = 'Distance: ' + map.DIST1 + ' cm | State: ' + (map.S1 || '-');
+    if (map.DIST2) document.getElementById('s2').innerText = 'Distance: ' + map.DIST2 + ' cm | State: ' + (map.S2 || '-');
+  }
+
+  setInterval(poll, 1000);
+  poll();
+</script>
+</body>
+</html>
