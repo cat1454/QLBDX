@@ -23,16 +23,16 @@
 
         <main class="dashboard-content">
             <!-- Main Content -->
-            <div class="stream-container">
+            <div class="stream-container" style="display:block;">
                 <!-- Left Section: Camera + Controls -->
-                <div class="stream-section">
+                <div class="stream-section" style="">
                     <div class="camera-section">
                         <h2>🎥 Camera Giám Sát</h2>
                         <img src="{% url 'video_feed' src='raspberrypi_cam' %}"
-     width="50%"
-     class="rounded-lg shadow"
-     id="camera-stream"
-     alt="Live camera stream không khả dụng">
+                        width="50%"
+                        class="rounded-lg shadow"
+                        id="camera-stream"
+                        alt="Live camera stream không khả dụng">
                     </div>
 
                         <div class="action-buttons" style="margin-top: 20px;">
@@ -117,30 +117,12 @@
                         </div>
                     </div>
 
-                    <!-- Parking Lot Visualization -->
-                    <div class="detail-card parking-visualization">
-                        <div class="status-header">
-                            <h3>🅿️ Sơ đồ bãi xe</h3>
-                            <span class="occupancy-badge" id="occupancy-rate">--</span>
-                        </div>
-                        
-                        <div class="parking-lot-grid" id="parking-lot-grid">
-                            <!-- Grid sẽ được JS tạo động -->
-                        </div>
-
-                        <div class="parking-legend">
-                            <div class="legend-item">
-                                <span class="spot empty"></span>
-                                <span>Trống</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="spot occupied"></span>
-                                <span>Đã đỗ</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="spot reserved"></span>
-                                <span>Đã đặt</span>
-                            </div>
+                    <!-- Smart Parking Lot Widget -->
+                    <div class="detail-card parking-visualization" style="width:100%;">
+                        <div style="font-family: Arial; text-align:center; width:100%;">
+                            <h2>🅿️ Bãi đỗ xe thông minh</h2>
+                            <div id="slots" style="display:grid; grid-template-columns:repeat(3,150px); grid-template-rows:repeat(2,150px); gap:20px; justify-content:center;"></div>
+                            <div id="status" style="margin-top:10px; font-size:16px;">Đang kết nối...</div>
                         </div>
                     </div>
                 </div>
@@ -162,13 +144,19 @@
                                     <th>Thời gian</th>
                                     <th>Biển số</th>
                                     <th>Độ tin cậy</th>
-                                    <th>Ảnh</th>
+                                    <th>Sự kiện</th>
                                 </tr>
                             </thead>
                             <tbody id="detection-history">
                                 <!-- JS sẽ cập nhật nội dung này -->
                             </tbody>
                         </table>
+                        <div style="text-align: center; margin-top: 15px;">
+                            <button id="load-more-btn" class="btn btn-secondary" style="display:none;">
+                                🔄 Xem thêm
+                            </button>
+                            <div id="load-more-status" style="margin-top: 10px; color: #666; font-size: 14px;"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -179,61 +167,39 @@
     <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
     <!-- Detection Updates -->
-  {% comment %} <script>
-    // ⚙️ Cấu hình
-    const TOTAL_SPOTS = 6;
-    let sensorStates = {};
+<script>
+    // 🅿️ Smart Parking Lot - Polling từ server cảm biến
+    const PARKING_SERVER_URL = "http://172.20.10.2:5000"; // đổi thành IP máy chủ của bạn
 
-    // 🚗 Hàm lấy trạng thái bãi đỗ xe
-    async function fetchParkingStatus() {
+    async function pollParking() {
         try {
-            {% comment %} const response = await fetch("{% url 'get_parking_status' %}"); {% endcomment %}
-            const data = await response.json();
-
-            Object.entries(data.status).forEach(([spot, info]) => {
-                sensorStates[spot] = !info.occupied;
+            const res = await fetch(PARKING_SERVER_URL + '/status');
+            const data = await res.json();
+            const container = document.getElementById('slots');
+            if (!data.success) {
+                document.getElementById('status').innerText = '❌ Mất kết nối hoặc không có dữ liệu';
+                return;
+            }
+            container.innerHTML = '';
+            data.slots.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'slot';
+                if (s.state === 'OCCUPIED') div.classList.add('occupied');
+                div.innerHTML = `<b>Ô ${s.id}</b><br>${s.state==='OCCUPIED'?'🚗 Đã chiếm':'🅿️ Trống'}<br><small>${s.dist} cm</small>`;
+                container.appendChild(div);
             });
-            updateParkingStatus();
-            return data;
-        } catch (error) {
-            console.error("❌ Lỗi lấy trạng thái bãi xe:", error);
-            return null;
+            document.getElementById('status').innerText = '✅ Đã cập nhật lúc ' + new Date().toLocaleTimeString();
+        } catch (e) {
+            document.getElementById('status').innerText = '⚠️ Lỗi khi lấy dữ liệu: ' + e.message;
         }
     }
-
-    // 🅿️ Tạo grid bãi xe
-    function initializeParkingLot() {
-        const grid = document.getElementById("parking-lot-grid");
-        for (let i = 1; i <= TOTAL_SPOTS; i++) {
-            const spot = document.createElement("div");
-            spot.className = "parking-spot";
-            spot.id = `spot-${i}`;
-            spot.innerHTML = `<span class="spot-number">${i}</span><span class="sensor-status"></span>`;
-            grid.appendChild(spot);
-        }
-        updateParkingStatus();
-    }
-
-    // 🔄 Cập nhật trạng thái bãi đỗ
-    function updateParkingStatus() {
-        Object.entries(sensorStates).forEach(([spotId, status]) => {
-            const spot = document.getElementById(`spot-${spotId}`);
-            if (!spot) return;
-            spot.classList.remove("empty", "occupied", "error");
-            if (status === null) spot.classList.add("error");
-            else if (status === true) spot.classList.add("empty");
-            else spot.classList.add("occupied");
-        });
-        
-
-        const occupied = Object.values(sensorStates).filter(s => s === false).length;
-        const occupancyRate = ((occupied / TOTAL_SPOTS) * 100).toFixed(1);
-        document.getElementById("occupancy-rate").textContent = `${occupancyRate}%`;
-    } {% endcomment %}
-    
 
     // 📸 Lấy dữ liệu nhận diện từ Django
-    async function updateDetections() {
+    let currentPage = 1;
+    const itemsPerPage = 10;
+    let allHistory = [];
+
+    async function updateDetections(reset = false) {
         try {
             const response = await fetch("{% url 'latest_detections' %}");
             const data = await response.json();
@@ -246,58 +212,87 @@
                         <div><b>${data.latest.time}</b></div>
                         <div>Biển số: <em>${data.latest.plate}</em></div>
                         <div>Độ tin cậy: ${data.latest.conf}</div>
+                        <div>Sự kiện: <span style="color: ${data.latest.event === 'ENTRY' ? '#4CAF50' : '#f44336'}; font-weight: bold;">${data.latest.event === 'ENTRY' ? '🚗 VÀO' : '🚦 RA'}</span></div>
                         ${data.latest.path ? `<img src="/media/${data.latest.path}" alt="latest" style="width:100%;border-radius:8px;margin-top:6px;">` : ""}
                     </div>
                 `;
             }
 
-            // ✅ Bảng lịch sử
-            let historyHTML = "";
-            const history = data.history || [];
-            for (let i = history.length - 1; i >= Math.max(0, history.length - 10); i--) {
-                const p = history[i];
-                historyHTML += `
-                    <tr>
-                        <td>${p.time}</td>
-                        <td>${p.plate}</td>
-                        <td>${p.conf}</td>
-                        <td>${p.path ? `<a href="/media/${p.path}" target="_blank">Xem</a>` : "-"}</td>
-                    </tr>
-                `;
+            // ✅ Lưu toàn bộ lịch sử
+            if (reset || allHistory.length === 0) {
+                allHistory = data.history || [];
+                currentPage = 1;
             }
-            document.getElementById("detection-history").innerHTML = historyHTML;
+
+            // Hiển thị theo trang
+            renderHistory();
         } catch (error) {
             console.error("❌ Lỗi cập nhật nhận diện:", error);
         }
     }
 
-    // 🚀 Khởi tạo
-    initializeParkingLot();
-    fetchParkingStatus();
-    updateDetections();
+    function renderHistory() {
+        const totalItems = allHistory.length;
+        const showItems = currentPage * itemsPerPage;
+        const itemsToShow = Math.min(showItems, totalItems);
 
-    // 🔁 Cập nhật định kỳ mỗi 3 giây
-    setInterval(() => {
-        updateDetections();
-        fetchParkingStatus();
-    }, 3000);
+        // Hiển thị từ mới nhất (reverse order)
+        let historyHTML = "";
+        for (let i = 0; i < itemsToShow; i++) {
+            const p = allHistory[i];
+            const eventColor = p.event === 'ENTRY' ? '#4CAF50' : '#f44336';
+            const eventIcon = p.event === 'ENTRY' ? '🚗' : '🚦';
+            historyHTML += `
+                <tr>
+                    <td>${p.time}</td>
+                    <td><b>${p.plate}</b></td>
+                    <td>${p.conf}</td>
+                    <td style="color: ${eventColor};"><b>${eventIcon} ${p.event}</b></td>
+                </tr>
+            `;
+        }
 
- {% comment %} // 🧱 Barrier control
-document.getElementById("toggle-barrier").addEventListener("click", async () => {
-    try {
-        /*
-        const response = await fetch("{% url 'toggle_barrier' %}", {
-            method: "POST",
-            headers: { "X-CSRFToken": "{{ csrf_token }}" }
-        });
-        const data = await response.json();
-        alert(data.message);
-        */
-        alert("🔧 Barrier control temporarily disabled (đã comment code).");
-    } catch (error) {
-        alert("Lỗi khi điều khiển barrier");
+        if (historyHTML === "") {
+            historyHTML = '<tr><td colspan="4" style="text-align:center; color:#999;">💭 Chưa có lịch sử phát hiện</td></tr>';
+        }
+
+        document.getElementById("detection-history").innerHTML = historyHTML;
+
+        // Hiển/ẩn nút "Xem thêm"
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        const loadMoreStatus = document.getElementById('load-more-status');
+
+        if (itemsToShow < totalItems) {
+            loadMoreBtn.style.display = 'inline-block';
+            loadMoreStatus.innerText = `Hiển thị ${itemsToShow}/${totalItems} bản ghi`;
+        } else {
+            loadMoreBtn.style.display = 'none';
+            if (totalItems > 0) {
+                loadMoreStatus.innerText = `✅ Đã hiển thị tất cả ${totalItems} bản ghi`;
+            } else {
+                loadMoreStatus.innerText = '';
+            }
+        }
     }
-}); {% endcomment %}
+
+    // Xử lý nút "Xem thêm"
+    document.getElementById('load-more-btn').addEventListener('click', () => {
+        currentPage++;
+        renderHistory();
+    });
+
+    // 📸 Lấy dữ liệu nhận diện từ Django
+
+    // 🚀 Khởi tạo
+    updateDetections(true); // Reset để load dữ liệu ban đầu
+    pollParking(); // Khởi tạo polling bãi xe
+
+    // 🔁 Cập nhật định kỳ
+    setInterval(() => {
+        updateDetections(true); // Reset=true để tự động cập nhật lịch sử mới nhất mỗi 3 giây
+    }, 3000);
+    
+    setInterval(pollParking, 1000); // Cập nhật trạng thái bãi xe mỗi 1 giây
 
 </script>
 
