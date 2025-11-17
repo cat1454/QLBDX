@@ -85,8 +85,7 @@ class ParkingSession(models.Model):
         Tính phí dựa trên thời lượng đỗ xe (phút)
         
         CÔNG THỨC:
-        - duration <= 30 phút: 0đ (MIỄN PHÍ)
-        - 30 < duration <= 90 phút: 5.000đ (giờ đầu)
+        - Vào bãi: 5.000đ (phí cố định cho 90 phút đầu)
         - duration > 90 phút: 5.000đ + (số_giờ_thêm * 3.000đ)
         
         Args:
@@ -97,27 +96,20 @@ class ParkingSession(models.Model):
         """
         import math
         
-        # EDGE CASE 1: Thời gian âm hoặc 0
-        if duration_minutes <= 0:
-            return Decimal(0)
-        
-        # CASE 1: 30 phút đầu - MIỄN PHÍ
-        if duration_minutes <= 30:
-            return Decimal(0)
-        
-        # CASE 2: Từ 31 đến 90 phút (1.5 giờ) - Tính 5.000đ
+        # Ngay khi vào bãi đã tính 5.000đ
+        # CASE 1: Đến 90 phút (1.5 giờ) - Phí cố định 5.000đ
         if duration_minutes <= 90:
             return Decimal(5000)
         
-        # CASE 3: Hơn 90 phút
-        # Trừ đi 90 phút đã tính (30p miễn phí + 60p giờ đầu)
+        # CASE 2: Hơn 90 phút
+        # Trừ đi 90 phút đã tính
         remaining_minutes = duration_minutes - 90
         
         # Làm tròn LÊN số giờ (mỗi giờ 3.000đ)
         additional_hours = math.ceil(remaining_minutes / 60)
         additional_fee = additional_hours * 3000
         
-        # Tổng phí = Giờ đầu + Giờ thêm
+        # Tổng phí = 5.000đ đầu + Giờ thêm
         total_fee = 5000 + additional_fee
         
         return Decimal(total_fee)
@@ -145,14 +137,11 @@ class ParkingSession(models.Model):
         duration = self.exit_time - self.entry_time
         self.duration_minutes = int(duration.total_seconds() / 60)
         
-        # Tính phí theo công thức mới
+        # Tính phí theo công thức mới (luôn tính phí, không miễn phí)
         self.fee = self.calculate_fee(self.duration_minutes)
         
-        # Xác định trạng thái thanh toán
-        if self.fee == 0:
-            self.payment_status = 'FREE'  # Miễn phí (dưới 30 phút)
-        else:
-            self.payment_status = 'UNPAID'  # Chưa thanh toán
+        # Luôn là UNPAID vì không còn miễn phí
+        self.payment_status = 'UNPAID'
         
         self.save()
     
@@ -166,14 +155,13 @@ class ParkingSession(models.Model):
         Trả về chi tiết tính phí để hiển thị cho khách hàng
         
         Returns:
-            dict: Chi tiết phí bao gồm miễn phí, giờ đầu, giờ thêm
+            dict: Chi tiết phí bao gồm giờ đầu, giờ thêm
         """
         import math
         
         if not self.duration_minutes:
             return {
-                'free_minutes': 0,
-                'first_hour_fee': 0,
+                'first_period_fee': 0,
                 'additional_hours': 0,
                 'additional_fee': 0,
                 'total': 0
@@ -181,21 +169,17 @@ class ParkingSession(models.Model):
         
         breakdown = {
             'duration_minutes': self.duration_minutes,
-            'free_minutes': min(30, self.duration_minutes),
-            'first_hour_fee': 0,
+            'first_period_fee': 5000,  # 90 phút đầu: 5.000đ
             'additional_hours': 0,
             'additional_fee': 0,
             'total': int(self.fee)
         }
         
-        if self.duration_minutes > 30:
-            breakdown['first_hour_fee'] = 5000
-            
-            if self.duration_minutes > 90:
-                remaining_minutes = self.duration_minutes - 90
-                additional_hours = math.ceil(remaining_minutes / 60)
-                breakdown['additional_hours'] = additional_hours
-                breakdown['additional_fee'] = additional_hours * 3000
+        if self.duration_minutes > 90:
+            remaining_minutes = self.duration_minutes - 90
+            additional_hours = math.ceil(remaining_minutes / 60)
+            breakdown['additional_hours'] = additional_hours
+            breakdown['additional_fee'] = additional_hours * 3000
         
         return breakdown
     

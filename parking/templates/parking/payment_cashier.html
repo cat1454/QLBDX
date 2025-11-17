@@ -132,7 +132,7 @@
         }
         .session-details {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             margin-bottom: 15px;
             color: #666;
@@ -257,10 +257,70 @@
             <h2>🔍 Tìm kiếm theo biển số</h2>
             <div class="search-input">
                 <input type="text" id="searchInput" placeholder="Nhập biển số xe (VD: 30A12345)" onkeyup="searchSession()">
-                <button class="btn btn-primary" onclick="searchSession()">Tìm kiếm</button>
                 <button class="btn btn-outline" onclick="loadAllUnpaid()">Xem tất cả</button>
+                <button class="btn btn-primary" onclick="testModal()" style="background: #f5576c;">🧪 Test Modal</button>
+            </div>
+            <div id="debugInfo" style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 12px; font-family: monospace;">
+                <div>🔍 Debug: <span id="debugStatus">Đang chờ...</span></div>
             </div>
         </div>
+
+        <!-- Payment Modal -->
+        <div id="paymentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+            <div style="background: white; border-radius: 15px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
+                <div style="text-align: center;">
+                    <div style="font-size: 64px; margin-bottom: 20px;">🚗</div>
+                    <h2 style="color: #333; margin-bottom: 10px;">Xe ra bãi!</h2>
+                    <div id="modalLicensePlate" style="font-size: 32px; font-weight: bold; color: #667eea; margin-bottom: 20px;"></div>
+                    
+                    <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: left;">
+                            <div>
+                                <div style="font-size: 12px; color: #999;">Thời gian vào</div>
+                                <div id="modalEntryTime" style="font-weight: 500; color: #333;"></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999;">Thời gian ra</div>
+                                <div id="modalExitTime" style="font-weight: 500; color: #333;"></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999;">Thời lượng đỗ</div>
+                                <div id="modalDuration" style="font-weight: 500; color: #333;"></div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999;">Phí đỗ xe</div>
+                                <div id="modalFee" style="font-size: 28px; font-weight: bold; color: #f5576c;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="closePaymentModal()" style="flex: 1; padding: 15px; border: 2px solid #ddd; background: white; color: #666; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 500;">
+                            ❌ Đóng
+                        </button>
+                        <button id="modalPayButton" onclick="payFromModal()" style="flex: 2; padding: 15px; border: none; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);">
+                            💳 Thanh toán ngay
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            @keyframes slideIn {
+                from {
+                    transform: translateY(-50px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+            }
+            #paymentModal[style*="display: flex"] {
+                display: flex !important;
+            }
+        </style>
 
         <!-- Unpaid List -->
         <div class="unpaid-list">
@@ -293,6 +353,124 @@
         }
 
         let allSessions = [];
+        let currentModalSession = null;
+        let lastCheckedDetection = null;
+
+        // Modal functions
+        function showPaymentModal(session) {
+            currentModalSession = session;
+            document.getElementById('modalLicensePlate').textContent = session.license_plate;
+            document.getElementById('modalEntryTime').textContent = formatDateTime(session.entry_time);
+            document.getElementById('modalExitTime').textContent = formatDateTime(session.exit_time);
+            document.getElementById('modalDuration').textContent = session.duration_minutes + ' phút';
+            document.getElementById('modalFee').textContent = formatMoney(session.fee);
+            document.getElementById('paymentModal').style.display = 'flex';
+            
+            // Play notification sound
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuAzvLZiTYIF2Sz5euqWBYKR6Hn8rhqJgU4jtXwy3opBSl+zPDckj8LFV6x6OumWRIKRp/h8sFuJwU3jdXwyXwqBSl9zPDbk0ALF1606OytVxYKSKTo87lrJgU6j9byz3wqBSiAz/LbiTcIF2i56+qnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBQ==');
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').style.display = 'none';
+            currentModalSession = null;
+        }
+
+        function testModal() {
+            if (allSessions.length === 0) {
+                alert('Không có session nào để test. Vui lòng tạo dữ liệu test trước.');
+                return;
+            }
+            showPaymentModal(allSessions[0]);
+        }
+
+        async function payFromModal() {
+            if (!currentModalSession) return;
+            
+            const sessionId = currentModalSession.id;
+            const licensePlate = currentModalSession.license_plate;
+            const fee = currentModalSession.fee;
+
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/pay/`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    closePaymentModal();
+                    alert(`✅ Thanh toán thành công!\n\nXe: ${licensePlate}\nSố tiền: ${formatMoney(fee)}`);
+                    loadAllUnpaid();
+                    loadTodayCollected();
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error paying session:', error);
+                alert('❌ Lỗi khi thanh toán: ' + error.message);
+            }
+        }
+
+        // Check for new EXIT detections
+        async function checkNewExitDetections() {
+            try {
+                const res = await fetch('/api/latest_detections/');
+                const data = await res.json();
+                
+                if (!data.success || !data.latest) {
+                    document.getElementById('debugStatus').textContent = 'Không có detection data';
+                    return;
+                }
+                
+                const latest = data.latest;
+                document.getElementById('debugStatus').innerHTML = 
+                    `Latest: ${latest.plate} | Event: ${latest.event} | Time: ${latest.time}`;
+                
+                // Check if it's an EXIT event (case insensitive)
+                if (latest.event && latest.event.toUpperCase() === 'EXIT') {
+                    const detectionId = latest.time + latest.plate;
+                    
+                    // Only show modal if this is a new detection
+                    if (lastCheckedDetection !== detectionId) {
+                        console.log('🚗 New EXIT detected:', latest.plate);
+                        document.getElementById('debugStatus').innerHTML += 
+                            ` <span style="color: #28a745;">✅ NEW EXIT!</span>`;
+                        
+                        lastCheckedDetection = detectionId;
+                        
+                        // Refresh unpaid sessions first to get latest data
+                        await loadAllUnpaid();
+                        
+                        // Find the session for this license plate (case insensitive)
+                        const session = allSessions.find(s => 
+                            s.license_plate.toUpperCase() === latest.plate.toUpperCase()
+                        );
+                        
+                        if (session) {
+                            console.log('✅ Found session for payment:', session);
+                            showPaymentModal(session);
+                        } else {
+                            console.log('❌ No unpaid session found for:', latest.plate);
+                            console.log('Available sessions:', allSessions.map(s => s.license_plate));
+                            document.getElementById('debugStatus').innerHTML += 
+                                ` <span style="color: #f5576c;">❌ No session found</span>`;
+                        }
+                    } else {
+                        document.getElementById('debugStatus').innerHTML += 
+                            ` <span style="color: #999;">(Already shown)</span>`;
+                    }
+                } else {
+                    // Not EXIT event, show the event type
+                    if (latest.event) {
+                        document.getElementById('debugStatus').innerHTML += 
+                            ` <span style="color: #4CAF50;">(${latest.event})</span>`;
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking detections:', error);
+                document.getElementById('debugStatus').textContent = 'Error: ' + error.message;
+            }
+        }
 
         // Load unpaid sessions
         async function loadAllUnpaid() {
@@ -348,6 +526,10 @@
                         <div class="fee-amount">${formatMoney(session.fee)}</div>
                     </div>
                     <div class="session-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Thời gian vào</div>
+                            <div class="detail-value">${formatDateTime(session.entry_time)}</div>
+                        </div>
                         <div class="detail-item">
                             <div class="detail-label">Thời gian ra</div>
                             <div class="detail-value">${formatDateTime(session.exit_time)}</div>
@@ -421,16 +603,18 @@
             }
         }
 
-        // Auto refresh every 10 seconds
+        // Auto refresh every 3 seconds to check for new exits
         setInterval(() => {
             loadAllUnpaid();
             loadTodayCollected();
-        }, 10000);
+            checkNewExitDetections();
+        }, 3000);
 
         // Initial load
         document.addEventListener('DOMContentLoaded', function() {
             loadAllUnpaid();
             loadTodayCollected();
+            checkNewExitDetections();
         });
     </script>
 </body>

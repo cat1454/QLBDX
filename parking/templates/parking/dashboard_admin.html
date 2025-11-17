@@ -177,6 +177,7 @@
         <thead>
           <tr>
             <th>Biển số</th>
+            <th>Thời gian vào</th>
             <th>Thời gian ra</th>
             <th>Thời lượng</th>
             <th>Số tiền</th>
@@ -186,7 +187,7 @@
         </thead>
         <tbody id="unpaidBody">
           <tr>
-            <td colspan="6" style="text-align: center; padding: 20px; color: #999;">Đang tải...</td>
+            <td colspan="7" style="text-align: center; padding: 20px; color: #999;">Đang tải...</td>
           </tr>
         </tbody>
       </table>
@@ -404,13 +405,14 @@
 
         const tbody = document.getElementById('unpaidBody');
         if (data.sessions.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px; color: #28a745;">✅ Tất cả đã thanh toán</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #28a745;">✅ Tất cả đã thanh toán</td></tr>';
           return;
         }
 
         tbody.innerHTML = data.sessions.map(session => `
           <tr>
             <td><strong>${session.license_plate}</strong></td>
+            <td>${formatDateTime(session.entry_time)}</td>
             <td>${formatDateTime(session.exit_time)}</td>
             <td>${session.duration_minutes} phút</td>
             <td><strong style="color: #f5576c;">${formatMoney(session.fee)}</strong></td>

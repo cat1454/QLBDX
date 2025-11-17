@@ -401,6 +401,7 @@ def get_unpaid_sessions(request):
         data.append({
             'id': session.id,
             'license_plate': session.license_plate,
+            'entry_time': timezone.localtime(session.entry_time).strftime('%Y-%m-%d %H:%M:%S'),
             'exit_time': timezone.localtime(session.exit_time).strftime('%Y-%m-%d %H:%M:%S'),
             'duration_minutes': session.duration_minutes,
             'fee': int(session.fee)
