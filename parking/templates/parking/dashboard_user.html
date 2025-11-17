@@ -15,7 +15,8 @@
             <div class="header-content">
                 <h1>🧰 Nhân viên Dashboard</h1>
                 <div class="header-actions">
-                    <p class="welcome-text">Xin chào, {{ user.username }} 👋</p>
+                    <a href="{% url 'payment_cashier' %}" class="btn btn-primary" style="margin-right: 10px;">💰 Thu tiền</a>
+                    <p class="welcome-text">Xin chào, {{ user.username }} </p>
                     <a href="{% url 'logout' %}" class="btn btn-outline">Đăng xuất</a>
                 </div>
             </div>
@@ -35,96 +36,252 @@
                         alt="Live camera stream không khả dụng">
                     </div>
 
-                        <div class="action-buttons" style="margin-top: 20px;">
-                            <div class="barier-control" id="control">
-                                <!-- Barrier Controls -->
-                                <div style="display: flex; flex-direction: row;">
-                                    <div class="bar" style="border: 1px solid #ddd; padding: 10px; margin: 10px;">
-                                        <h3>Barrier 1</h3>
-                                        <div class="dist" id="s1" style="display:none; margin-bottom: 1rem;">Distance: - cm | State: -</div>
-                                        <button onclick="cmd('B1 OPEN')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Open</button>
-                                        <button onclick="cmd('B1 CLOSE')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Close</button>
-                                        <button onclick="cmd('B1 TOGGLE')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Toggle</button>
-                                    </div>
+                        <!-- ================= BARRIER CONTROL BLOCK ================= -->
+                        <div id="barrier-root">
+                            <style>
+                                #barrier-root {
+                                    font-family: Arial, sans-serif;
+                                }
 
-                                    <div class="bar" style="border: 1px solid #ddd; padding: 10px; margin: 10px;">
-                                        <h3>Barrier 2</h3>
-                                        <div class="dist" id="s2" style="display:none; margin-bottom: 1rem;">Distance: - cm | State: -</div>
-                                        <button onclick="cmd('B2 OPEN')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Open</button>
-                                        <button onclick="cmd('B2 CLOSE')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Close</button>
-                                        <button onclick="cmd('B2 TOGGLE')" style="background-color: #6279ff; color: white; border: none; border-radius: 1rem; box-shadow: 0px 0px 8px 2px rgb(207, 207, 207); transition: all 0.3s ease; padding: 0.5rem 1rem; margin-right:8px;">Toggle</button>
-                                    </div>
+                                #barrier-root .barrier-container {
+                                    display: flex;
+                                    flex-direction: row;
+                                    gap: 24px;
+                                    padding: 20px;
+                                }
+
+                                #barrier-root .bar {
+                                    border: 1px solid #ddd;
+                                    padding: 10px;
+                                    margin: 10px 0;
+                                    border-radius: 12px;
+                                    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+                                    min-width: 220px;
+                                }
+
+                                #barrier-root .bar h3 {
+                                    margin-top: 0;
+                                    margin-bottom: 8px;
+                                }
+
+                                #barrier-root .dist {
+                                    margin-bottom: 1rem;
+                                }
+
+                                #barrier-root button {
+                                    background-color: #6279ff;
+                                    color: white;
+                                    border: none;
+                                    border-radius: 1rem;
+                                    box-shadow: 0px 0px 8px 2px rgb(207, 207, 207);
+                                    transition: all 0.3s ease;
+                                    padding: 0.5rem 1rem;
+                                    margin-right: 8px;
+                                    margin-bottom: 4px;
+                                }
+
+                                #barrier-root button:hover {
+                                    background-color: #3d3c9b;
+                                    transform: translateY(-2px);
+                                    cursor: pointer;
+                                }
+
+                                #barrier-root #info {
+                                    margin-top: 12px;
+                                    padding: 0 20px 10px 20px;
+                                }
+                            </style>
+
+                            <div class="barrier-container">
+                                <div class="bar">
+                                    <h3>Barrier 1</h3>
+                                    <div class="dist" id="barrier-s1">Distance: - cm | State: -</div>
+                                    <button onclick="barrierCmd('B1 OPEN')">Open</button>
+                                    <button onclick="barrierCmd('B1 CLOSE')">Close</button>
+                                    <button onclick="barrierCmd('B1 TOGGLE')">Toggle</button>
                                 </div>
-                                <div id="info" style="display:none; margin-top: 12px;">Server status: <span id="barrier-status">-</span></div>
+
+                                <div class="bar">
+                                    <h3>Barrier 2</h3>
+                                    <div class="dist" id="barrier-s2">Distance: - cm | State: -</div>
+                                    <button onclick="barrierCmd('B2 OPEN')">Open</button>
+                                    <button onclick="barrierCmd('B2 CLOSE')">Close</button>
+                                    <button onclick="barrierCmd('B2 TOGGLE')">Toggle</button>
+                                </div>
+                            </div>
+
+                            <div id="info">
+                                Server status: <span id="barrier-status">-</span>
                             </div>
 
                             <script>
-                                // ⚠️ Cấu hình Barrier Control
-                                const SERVER_URL = "http://172.20.10.3:5000";
+                                // Nếu server ở IP khác, sửa BARRIER_BASE_URL thành "http://IP:5000"
+                                const BARRIER_BASE_URL = "http://172.20.10.2:5000";
 
-                                async function cmd(command) {
-                                    document.getElementById('barrier-status').innerText = 'Sending ' + command;
+                                async function barrierCmd(command) {
+                                    const statusEl = document.getElementById("barrier-status");
+                                    statusEl.innerText = "Sending " + command;
                                     try {
-                                        const r = await fetch(`${SERVER_URL}/cmd/${encodeURIComponent(command)}`);
+                                        const r = await fetch(
+                                            BARRIER_BASE_URL + "/cmd/" + encodeURIComponent(command)
+                                        );
                                         const j = await r.json();
                                         if (j.success) {
-                                            document.getElementById('barrier-status').innerText = 'OK: ' + j.response;
-                                            await updateStatusFromResponse(j.response);
+                                            statusEl.innerText = "OK: " + j.response;
+                                            await barrierUpdateStatusFromResponse(j.response);
                                         } else {
-                                            document.getElementById('barrier-status').innerText = 'ERR: ' + j.error;
+                                            statusEl.innerText = "ERR: " + j.error;
                                         }
-                                    } catch(e) {
-                                        document.getElementById('barrier-status').innerText = 'Fetch error: ' + e;
+                                    } catch (e) {
+                                        statusEl.innerText = "Fetch error: " + e;
                                     }
                                 }
 
-                                async function pollBarrier() {
+                                async function barrierPoll() {
+                                    const statusEl = document.getElementById("barrier-status");
                                     try {
-                                        const res = await fetch(`${SERVER_URL}/status`);
+                                        const res = await fetch(BARRIER_BASE_URL + "/barrier/status");
                                         const j = await res.json();
                                         if (j.success) {
-                                            document.getElementById('s1').innerText = 'Distance: ' + j.dist1 + ' cm | State: ' + j.s1;
-                                            document.getElementById('s2').innerText = 'Distance: ' + j.dist2 + ' cm | State: ' + j.s2;
-                                            document.getElementById('barrier-status').innerText = 'Connected';
+                                            document.getElementById("barrier-s1").innerText =
+                                                "Distance: " + j.dist1 + " cm | State: " + j.s1;
+                                            document.getElementById("barrier-s2").innerText =
+                                                "Distance: " + j.dist2 + " cm | State: " + j.s2;
+                                            statusEl.innerText = "Connected";
                                         } else {
-                                            document.getElementById('barrier-status').innerText = 'Not connected';
+                                            statusEl.innerText = "Not connected";
                                         }
-                                    } catch(e) {
-                                        document.getElementById('barrier-status').innerText = 'Error: ' + e;
+                                    } catch (e) {
+                                        statusEl.innerText = "Error: " + e;
                                     }
                                 }
 
-                                async function updateStatusFromResponse(resp) {
+                                async function barrierUpdateStatusFromResponse(resp) {
                                     if (!resp) return;
-                                    const pairs = resp.split(';');
+                                    const pairs = resp.split(";");
                                     const map = {};
                                     for (let p of pairs) {
-                                        const kv = p.split(':');
+                                        const kv = p.split(":");
                                         if (kv.length == 2) map[kv[0]] = kv[1];
                                     }
-                                    if (map.DIST1) document.getElementById('s1').innerText = 'Distance: ' + map.DIST1 + ' cm | State: ' + (map.S1 || '-');
-                                    if (map.DIST2) document.getElementById('s2').innerText = 'Distance: ' + map.DIST2 + ' cm | State: ' + (map.S2 || '-');
+                                    if (map.DIST1)
+                                        document.getElementById("barrier-s1").innerText =
+                                            "Distance: " +
+                                            map.DIST1 +
+                                            " cm | State: " +
+                                            (map.S1 || "-");
+                                    if (map.DIST2)
+                                        document.getElementById("barrier-s2").innerText =
+                                            "Distance: " +
+                                            map.DIST2 +
+                                            " cm | State: " +
+                                            (map.S2 || "-");
                                 }
 
-                                setInterval(pollBarrier, 1000);
-                                pollBarrier();
+                                setInterval(barrierPoll, 1000);
+                                barrierPoll();
                             </script>
-
-                            <button class="btn btn-secondary" id="refresh-data">
-                                <i class="fas fa-sync"></i>
-                                Làm mới
-                            </button>
                         </div>
+                        <!-- =============== END BARRIER CONTROL BLOCK =============== -->
                     </div>
 
-                    <!-- Smart Parking Lot Widget -->
-                    <div class="detail-card parking-visualization" style="width:100%;">
-                        <div style="font-family: Arial; text-align:center; width:100%;">
-                            <h2>🅿️ Bãi đỗ xe thông minh</h2>
-                            <div id="slots" style="display:grid; grid-template-columns:repeat(3,150px); grid-template-rows:repeat(2,150px); gap:20px; justify-content:center;"></div>
-                            <div id="status" style="margin-top:10px; font-size:16px;">Đang kết nối...</div>
-                        </div>
+                    <!-- ================= PARKING SLOT BLOCK ================= -->
+                    <div id="parking-root" class="detail-card parking-visualization" style="width:100%;">
+                        <style>
+                            #parking-root {
+                                font-family: Arial, sans-serif;
+                            }
+
+                            #parking-root h2 {
+                                text-align: center;
+                                width: 100%;
+                                margin-top: 20px;
+                                margin-bottom: 16px;
+                            }
+
+                            #parking-root #slots {
+                                display: grid;
+                                grid-template-columns: repeat(2, 150px);
+                                grid-template-rows: repeat(2, 150px);
+                                gap: 20px;
+                                justify-content: center;
+                                padding: 10px 20px 0 20px;
+                            }
+
+                            #parking-root .slot {
+                                width: 150px;
+                                height: 150px;
+                                border-radius: 12px;
+                                color: white;
+                                display: flex;
+                                flex-direction: column;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 20px;
+                                box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+                                border: 2px solid #ccc;
+                                transition: background 0.3s;
+                                background-color: transparent; /* ô trống không fill màu */
+                            }
+
+                            #parking-root .slot b {
+                                margin-bottom: 4px;
+                            }
+
+                            #parking-root .occupied {
+                                background-color: #e53935;
+                            }
+
+                            #parking-root #parking-status {
+                                text-align: center;
+                                margin-top: 10px;
+                                font-size: 16px;
+                                padding-bottom: 20px;
+                            }
+                        </style>
+
+                        <h2>🅿️ Bãi đỗ xe thông minh (4 ô)</h2>
+                        <div id="slots"></div>
+                        <div id="parking-status">Đang kết nối...</div>
+
+                        <script>
+                            // Nếu server ở IP khác, sửa PARKING_BASE_URL thành "http://IP:5000"
+                            const PARKING_BASE_URL = "http://172.20.10.2:5000";
+
+                            async function parkingPoll() {
+                                const statusEl = document.getElementById("parking-status");
+                                try {
+                                    const res = await fetch(PARKING_BASE_URL + "/parking/status");
+                                    const j = await res.json();
+                                    const container = document.getElementById("slots");
+                                    if (!j.success) {
+                                        statusEl.innerText = "❌ Mất kết nối hoặc không có dữ liệu";
+                                        return;
+                                    }
+                                    container.innerHTML = "";
+                                    j.slots.forEach((s) => {
+                                        const div = document.createElement("div");
+                                        div.className = "slot";
+                                        if (s.state === "OCCUPIED") div.classList.add("occupied");
+                                        div.innerHTML =
+                                            `<b>Ô ${s.id}</b>` +
+                                            `<br>` +
+                                            (s.state === "OCCUPIED" ? "🚗 Đã chiếm" : "🅿️ Trống") +
+                                            `<br><small>${s.dist} cm</small>`;
+                                        container.appendChild(div);
+                                    });
+                                    statusEl.innerText =
+                                        "✅ Đã cập nhật lúc " + new Date().toLocaleTimeString();
+                                } catch (e) {
+                                    statusEl.innerText = "⚠️ Lỗi khi lấy dữ liệu";
+                                }
+                            }
+
+                            setInterval(parkingPoll, 1000);
+                            parkingPoll();
+                        </script>
                     </div>
+                    <!-- =============== END PARKING SLOT BLOCK =============== -->
                 </div>
 
                 <!-- Right Section: Detections -->
@@ -168,32 +325,7 @@
 
     <!-- Detection Updates -->
 <script>
-    // 🅿️ Smart Parking Lot - Polling từ server cảm biến
-    const PARKING_SERVER_URL = "http://172.20.10.2:5000"; // đổi thành IP máy chủ của bạn
-
-    async function pollParking() {
-        try {
-            const res = await fetch(PARKING_SERVER_URL + '/status');
-            const data = await res.json();
-            const container = document.getElementById('slots');
-            if (!data.success) {
-                document.getElementById('status').innerText = '❌ Mất kết nối hoặc không có dữ liệu';
-                return;
-            }
-            container.innerHTML = '';
-            data.slots.forEach(s => {
-                const div = document.createElement('div');
-                div.className = 'slot';
-                if (s.state === 'OCCUPIED') div.classList.add('occupied');
-                div.innerHTML = `<b>Ô ${s.id}</b><br>${s.state==='OCCUPIED'?'🚗 Đã chiếm':'🅿️ Trống'}<br><small>${s.dist} cm</small>`;
-                container.appendChild(div);
-            });
-            document.getElementById('status').innerText = '✅ Đã cập nhật lúc ' + new Date().toLocaleTimeString();
-        } catch (e) {
-            document.getElementById('status').innerText = '⚠️ Lỗi khi lấy dữ liệu: ' + e.message;
-        }
-    }
-
+    // ================= DETECTION UPDATES SECTION =================
     // 📸 Lấy dữ liệu nhận diện từ Django
     let currentPage = 1;
     const itemsPerPage = 10;
@@ -285,14 +417,11 @@
 
     // 🚀 Khởi tạo
     updateDetections(true); // Reset để load dữ liệu ban đầu
-    pollParking(); // Khởi tạo polling bãi xe
 
     // 🔁 Cập nhật định kỳ
     setInterval(() => {
         updateDetections(true); // Reset=true để tự động cập nhật lịch sử mới nhất mỗi 3 giây
     }, 3000);
-    
-    setInterval(pollParking, 1000); // Cập nhật trạng thái bãi xe mỗi 1 giây
 
 </script>
 

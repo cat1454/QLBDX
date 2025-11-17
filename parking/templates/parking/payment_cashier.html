@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="vi">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thu tiền - Smart Parking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            color: #333;
+            font-size: 28px;
+        }
+        .header .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+        .search-box {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-box h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .search-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .search-input input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .search-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .unpaid-list {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .unpaid-list h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        .session-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #f5576c;
+        }
+        .session-card.paid {
+            border-left-color: #28a745;
+            opacity: 0.6;
+        }
+        .session-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .license-plate {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .fee-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #f5576c;
+        }
+        .session-details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+            color: #666;
+        }
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 3px;
+        }
+        .detail-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .session-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-pay {
+            background: #28a745;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .btn-pay:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+        }
+        .btn-paid {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-badge.unpaid {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-badge.paid {
+            background: #d4edda;
+            color: #155724;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+        .stats-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            flex: 1;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>💰 Thu tiền bãi đỗ xe</h1>
+                <p style="color: #666; margin-top: 5px;">Quản lý thanh toán nhanh chóng</p>
+            </div>
+            <div class="user-info">
+                <span style="color: #666;">👤 {{ user.username }}</span>
+                <a href="{% url 'dashboard_user' %}" class="btn btn-outline">← Quay lại</a>
+                <a href="{% url 'logout' %}" class="btn btn-outline">Đăng xuất</a>
+            </div>
+        </div>
+
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-label">TỔNG NỢ</div>
+                <div class="stat-value" id="totalDebt" style="color: #f5576c;">0đ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">CHƯA THANH TOÁN</div>
+                <div class="stat-value" id="unpaidCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ĐÃ THU HÔM NAY</div>
+                <div class="stat-value" id="todayCollected" style="color: #28a745;">0đ</div>
+            </div>
+        </div>
+
+        <!-- Search Box -->
+        <div class="search-box">
+            <h2>🔍 Tìm kiếm theo biển số</h2>
+            <div class="search-input">
+                <input type="text" id="searchInput" placeholder="Nhập biển số xe (VD: 30A12345)" onkeyup="searchSession()">
+                <button class="btn btn-primary" onclick="searchSession()">Tìm kiếm</button>
+                <button class="btn btn-outline" onclick="loadAllUnpaid()">Xem tất cả</button>
+            </div>
+        </div>
+
+        <!-- Unpaid List -->
+        <div class="unpaid-list">
+            <h2>📋 Danh sách chưa thanh toán</h2>
+            <div id="sessionsList">
+                <div class="empty-state">
+                    <div class="empty-state-icon">⏳</div>
+                    <p>Đang tải dữ liệu...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Format money
+        function formatMoney(amount) {
+            return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+        }
+
+        // Format datetime
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString('vi-VN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        let allSessions = [];
+
+        // Load unpaid sessions
+        async function loadAllUnpaid() {
+            try {
+                const res = await fetch('/api/sessions/unpaid/');
+                const data = await res.json();
+
+                allSessions = data.sessions;
+                document.getElementById('unpaidCount').textContent = data.count;
+                document.getElementById('totalDebt').textContent = formatMoney(data.total_debt);
+
+                displaySessions(allSessions);
+            } catch (error) {
+                console.error('Error loading sessions:', error);
+                document.getElementById('sessionsList').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <p>Lỗi khi tải dữ liệu</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load today collected
+        async function loadTodayCollected() {
+            try {
+                const res = await fetch('/api/revenue/stats/?period=day');
+                const data = await res.json();
+                document.getElementById('todayCollected').textContent = formatMoney(data.total_revenue);
+            } catch (error) {
+                console.error('Error loading today stats:', error);
+            }
+        }
+
+        // Display sessions
+        function displaySessions(sessions) {
+            const container = document.getElementById('sessionsList');
+
+            if (sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <p>Tất cả đã thanh toán</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sessions.map(session => `
+                <div class="session-card" id="session-${session.id}">
+                    <div class="session-header">
+                        <div class="license-plate">🚗 ${session.license_plate}</div>
+                        <div class="fee-amount">${formatMoney(session.fee)}</div>
+                    </div>
+                    <div class="session-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Thời gian ra</div>
+                            <div class="detail-value">${formatDateTime(session.exit_time)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Thời lượng</div>
+                            <div class="detail-value">${session.duration_minutes} phút</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Trạng thái</div>
+                            <div class="detail-value">
+                                <span class="status-badge unpaid">Chưa thanh toán</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="session-actions">
+                        <button class="btn-pay" onclick="paySession(${session.id}, '${session.license_plate}', ${session.fee})">
+                            💳 Thanh toán ${formatMoney(session.fee)}
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search session
+        function searchSession() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toUpperCase();
+            
+            if (!searchTerm) {
+                displaySessions(allSessions);
+                return;
+            }
+
+            const filtered = allSessions.filter(s => 
+                s.license_plate.toUpperCase().includes(searchTerm)
+            );
+
+            displaySessions(filtered);
+        }
+
+        // Pay session
+        async function paySession(sessionId, licensePlate, fee) {
+            if (!confirm(`Xác nhận thanh toán ${formatMoney(fee)} cho xe ${licensePlate}?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/sessions/${sessionId}/pay/`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    // Success animation
+                    const card = document.getElementById(`session-${sessionId}`);
+                    card.style.transition = 'all 0.5s';
+                    card.style.transform = 'scale(0.95)';
+                    card.style.opacity = '0.5';
+                    
+                    setTimeout(() => {
+                        alert(`✅ Thanh toán thành công!\n\nXe: ${licensePlate}\nSố tiền: ${formatMoney(fee)}`);
+                        loadAllUnpaid();
+                        loadTodayCollected();
+                    }, 500);
+                } else {
+                    alert('❌ ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error paying session:', error);
+                alert('❌ Lỗi khi thanh toán: ' + error.message);
+            }
+        }
+
+        // Auto refresh every 10 seconds
+        setInterval(() => {
+            loadAllUnpaid();
+            loadTodayCollected();
+        }, 10000);
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllUnpaid();
+            loadTodayCollected();
+        });
+    </script>
+</body>
+</html>

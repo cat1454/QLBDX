@@ -341,6 +341,9 @@ def add_staff(request):
 def dashboard_user(request):
     return render(request, 'parking/dashboard_user.html', {'user': request.user})
 
+@login_required
+def payment_cashier(request):
+    return render(request, 'parking/payment_cashier.html', {'user': request.user})
 
 
     
@@ -423,12 +426,25 @@ def upload_license_plate(request):
                 print(f"✅ ENTRY: {plate} from {source} ({confidence:.2%}) -> Session #{session.id}")
                 
             elif event_type == 'EXIT':
-                # Kết thúc phiên đỗ xe
+                # Kết thúc phiên đỗ xe - TỰ ĐỘNG TÍNH TOÁN
                 active_session.complete_session(timezone.now(), filename)
+                
+                # Lấy chi tiết phí để trả về
+                fee_breakdown = active_session.get_fee_breakdown()
+                
                 response_data['session_id'] = active_session.id
                 response_data['duration_minutes'] = active_session.duration_minutes
-                response_data['fee'] = float(active_session.fee)
+                response_data['fee'] = int(active_session.fee)
+                response_data['payment_status'] = active_session.payment_status
+                response_data['fee_breakdown'] = fee_breakdown
                 response_data['action'] = 'open_barrier'
+                
+                # Message thân thiện
+                if active_session.fee == 0:
+                    response_data['display_message'] = f"Cảm ơn! Miễn phí ({active_session.duration_minutes} phút)"
+                else:
+                    response_data['display_message'] = f"Phí đỗ xe: {int(active_session.fee):,}đ ({active_session.duration_minutes} phút)"
+                
                 print(f"✅ EXIT: {plate} from {source} ({confidence:.2%}) -> {active_session.duration_minutes}p, {active_session.fee:,.0f} VNĐ")
 
             return JsonResponse(response_data)
