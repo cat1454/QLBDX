@@ -47,7 +47,7 @@
                 <div class="form-group">
                     <label for="password">
                         <i class="fas fa-lock"></i>
-                        {% trans "Password" %}
+                       Password
                     </label>
                     <div class="password-input">
                         <input type="password" id="password" name="password" required 
@@ -77,8 +77,8 @@
 
             <div class="login-footer">
                 <p>{% trans "Don't have an account?" %}
-                    <a href="{% url 'register' %}" class="register-link">
-                        {% trans "Register now" %}
+                    <span class="register-link" style="color: #999; cursor: not-allowed;">
+                        Liên hệ Admin để tạo tài khoản
                     </a>
                 </p>
             </div>

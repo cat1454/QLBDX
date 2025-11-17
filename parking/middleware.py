@@ -8,15 +8,11 @@ class RoleMiddleware:
     def __call__(self, request):
         if request.user.is_authenticated:
             if 'dashboard' in request.path:
-                user_role = request.user.profile.role.lower()
-                if user_role not in request.path:
-                    messages.warning(request, 'Bạn không có quyền truy cập trang này.')
-                    if user_role == 'admin':
-                        return redirect('dashboard_admin')
-                    elif user_role == 'user':
-                        return redirect('dashboard_user')
-                    else:
-                        return redirect('dashboard_customer')
+                # Sử dụng is_superuser thay vì profile.role
+                if request.user.is_superuser and 'dashboard_admin' not in request.path:
+                    return redirect('dashboard_admin')
+                elif not request.user.is_superuser and 'dashboard_user' not in request.path and 'dashboard' in request.path:
+                    return redirect('dashboard_user')
         
         response = self.get_response(request)
         return response

@@ -44,6 +44,43 @@
     </section>
 
     <section class="controls">
+      <!-- Form thêm nhân viên mới -->
+      <div class="card">
+        <h3>➕ Thêm tài khoản nhân viên</h3>
+        <form method="POST" action="{% url 'add_staff' %}" class="add-staff-form" style="margin-top: 15px;">
+          {% csrf_token %}
+          <div class="form-group">
+            <label>Tên đăng nhập:</label>
+            <input type="text" name="username" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label>Email:</label>
+            <input type="email" name="email" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label>Mật khẩu:</label>
+            <input type="password" name="password" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+          <div class="form-group" style="margin-top: 10px;">
+            <label>Họ tên:</label>
+            <input type="text" name="full_name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          </div>
+          <button type="submit" class="btn" style="margin-top: 15px; background-color: #4CAF50; color: white; width: 100%;">
+            ✅ Tạo tài khoản
+          </button>
+        </form>
+        
+        {% if messages %}
+        <div style="margin-top: 15px;">
+          {% for message in messages %}
+          <div style="padding: 10px; border-radius: 4px; background-color: {% if message.tags == 'success' %}#d4edda{% elif message.tags == 'error' %}#f8d7da{% else %}#d1ecf1{% endif %}; color: {% if message.tags == 'success' %}#155724{% elif message.tags == 'error' %}#721c24{% else %}#0c5460{% endif %};">
+            {{ message }}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      
       <div class="card">
         <h3>Hành động nhanh</h3>
         <div class="actions">

@@ -1,7 +1,6 @@
 from django.http import JsonResponse
 from django.contrib.auth.models import User
 from django.views.decorators.http import require_http_methods
-from .models import Profile
 
 @require_http_methods(["GET"])
 def check_username(request):

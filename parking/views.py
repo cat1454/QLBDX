@@ -214,9 +214,6 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
 
-from parking.form import ProfileUpdateForm, UserUpdateForm
-from parking.models import Profile
-
 def home(request):
     # Đảm bảo người dùng bắt đầu ở trạng thái đăng xuất khi vào trang home
     if request.user.is_authenticated:
@@ -266,18 +263,12 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
-            role = user.first_name  # lấy role đã lưu khi đăng ký
             
-            # Chuyển hướng dựa trên vai trò
-            if role == 'Admin':
+            # Chuyển hướng dựa trên vai trò (superuser = Admin)
+            if user.is_superuser:
                 return redirect('dashboard_admin')
-            elif role == 'User':
-                return redirect('dashboard_user')
-            elif role == 'Customer':
-                return redirect('dashboard_customer')
             else:
-                messages.error(request, 'Vai trò không hợp lệ!')
-                return redirect('home')
+                return redirect('dashboard_user')
         else:
             messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng!')
 
@@ -295,47 +286,63 @@ def dashboard_admin(request):
 
 
 @login_required(login_url='login')
+def add_staff(request):
+    """Admin-only view to create new staff accounts"""
+    # Check if user is admin (superuser)
+    if not request.user.is_superuser:
+        messages.error(request, 'Bạn không có quyền thực hiện thao tác này.')
+        return redirect('dashboard_user')
+    
+    if request.method == 'POST':
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '').strip()
+        full_name = request.POST.get('full_name', '').strip()
+        
+        # Validate inputs
+        if not username or not password:
+            messages.error(request, 'Tên đăng nhập và mật khẩu là bắt buộc.')
+            return redirect('dashboard_admin')
+        
+        # Check if username already exists
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f'Tên đăng nhập "{username}" đã tồn tại.')
+            return redirect('dashboard_admin')
+        
+        # Check if email already exists (if provided)
+        if email and User.objects.filter(email=email).exists():
+            messages.error(request, f'Email "{email}" đã được sử dụng.')
+            return redirect('dashboard_admin')
+        
+        try:
+            # Create user (staff, not superuser)
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password
+            )
+            
+            # Set first_name if full_name provided
+            if full_name:
+                user.first_name = full_name
+                user.save()
+            
+            messages.success(request, f'Đã tạo tài khoản nhân viên "{username}" thành công.')
+        except Exception as e:
+            messages.error(request, f'Lỗi khi tạo tài khoản: {str(e)}')
+        
+        return redirect('dashboard_admin')
+    
+    # GET request - redirect to admin dashboard
+    return redirect('dashboard_admin')
+
+
+@login_required(login_url='login')
 def dashboard_user(request):
     return render(request, 'parking/dashboard_user.html', {'user': request.user})
 
 
-@login_required(login_url='login')
-def dashboard_customer(request):
-    return render(request, 'parking/dashboard_customer.html', {'user': request.user})
-@login_required(login_url='login')
-def profile_view(request):
-    # Nếu user chưa có profile thì tự tạo mới
-    profile, created = Profile.objects.get_or_create(
-        user=request.user,
-        defaults={
-            'role': 'Customer',
-            'wallet': 0
-        }
-    )
-    return render(request, 'parking/profile.html', {'profile': profile})
 
-# Cập nhật profile
-@login_required(login_url='login')
-def edit_profile(request):
-    profile = request.user.profile
-
-    if request.method == 'POST':
-        user_form = UserUpdateForm(request.POST, instance=request.user)
-        profile_form = ProfileUpdateForm(request.POST, request.FILES, instance=profile)
-        
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, 'Cập nhật thông tin thành công!')
-            return redirect('profile')
-    else:
-        user_form = UserUpdateForm(instance=request.user)
-        profile_form = ProfileUpdateForm(instance=profile)
-
-    return render(request, 'parking/edit_profile.html', {
-        'user_form': user_form,
-        'profile_form': profile_form,
-    })
     
 import os
 
@@ -468,121 +475,3 @@ import time
 def parking_history(request):
     # render template lịch sử
     return render(request, 'parking/parking_history.html')
-
-from django.shortcuts import render, redirect
-from django.contrib.auth import login, authenticate, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.db import transaction
-from django.core.exceptions import ValidationError
-from .form import CustomUserCreationForm, LoginForm
-from .models import Profile
-from django.contrib.auth.models import Group
-
-def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('home')
-        
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            remember = form.cleaned_data.get('remember')
-            
-            try:
-                user = authenticate(username=username, password=password)
-                if user is not None:
-                    if user.is_active:
-                        login(request, user)
-                        if not remember:
-                            request.session.set_expiry(0)
-                        
-                        # Redirect based on role
-                        profile = user.profile
-                        if profile.role == 'Admin' or user.is_superuser:
-                            return redirect('dashboard_admin')
-                        elif profile.role == 'User':
-                            return redirect('dashboard_user')
-                        else:
-                            return redirect('dashboard_customer')
-                    else:
-                        messages.error(request, 'Tài khoản đã bị vô hiệu hóa.')
-                else:
-                    messages.error(request, 'Tên đăng nhập hoặc mật khẩu không đúng.')
-            except Exception as e:
-                messages.error(request, f'Lỗi đăng nhập: {str(e)}')
-    else:
-        form = LoginForm()
-    
-    return render(request, 'parking/login.html', {'form': form})
-
-def register_view(request):
-    if request.user.is_authenticated:
-        return JsonResponse({
-            'success': False,
-            'message': 'Bạn đã đăng nhập rồi'
-        })
-        
-    if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST)
-        try:
-            with transaction.atomic():
-                if form.is_valid():
-                    user = form.save(commit=False)
-                    user.email = form.cleaned_data['email']
-                    user.save()
-
-                    # Create profile
-                    role = request.POST.get('role', 'Customer')
-                    profile = Profile.objects.create(
-                        user=user,
-                        role=role
-                    )
-
-                    # Add to group
-                    group, _ = Group.objects.get_or_create(name=role)
-                    user.groups.add(group)
-
-                    # Auto login after registration
-                    login(request, user)
-                    
-                    # Return success response
-                    return JsonResponse({
-                        'success': True,
-                        'redirect': reverse('dashboard_customer' if role == 'Customer' else 'home'),
-                        'message': 'Đăng ký thành công'
-                    })
-                else:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.',
-                        'errors': form.errors
-                    })
-        except ValidationError as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Lỗi xác thực: {e.message}'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Lỗi đăng ký: {str(e)}'
-            })
-    else:
-        return render(request, 'parking/register.html', {'form': CustomUserCreationForm()})
-
-@login_required
-def logout_view(request):
-    logout(request)
-    messages.success(request, 'Đã đăng xuất thành công.')
-    return redirect('login')
-
-@login_required
-def profile_view(request):
-    profile = request.user.profile
-    context = {
-        'profile': profile,
-        'transactions': profile.transaction_set.order_by('-timestamp')[:5]
-    }
-    return render(request, 'parking/profile.html', context)

@@ -7,26 +7,18 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('', views.home, name='home'),
     path('login/', views.login_view, name='login'),
-    path('register/', views.register_view, name='register'),
+    # path('register/', views.register_view, name='register'),  # Disabled - Only admin can add users
     path('logout/', views.logout_view, name='logout'),
  
  # 🔹 Các dashboard riêng
     path('dashboard_admin/', views.dashboard_admin, name='dashboard_admin'),
+    path('add_staff/', views.add_staff, name='add_staff'),
     
     path('dashboard_user/', views.dashboard_user, name='dashboard_user'),
-    path('dashboard_customer/', views.dashboard_customer, name='dashboard_customer'),
 
-    path('profile/', views.profile_view, name='profile'),
-    path('edit_profile/', views.edit_profile, name='edit_profile'),
-
-   
-     path('parking_history/', views.parking_history, name='parking_history'),
+    path('parking_history/', views.parking_history, name='parking_history'),
     
    # API endpoints
-    path('api/check-username/', api.check_username, name='api_check_username'),
-    path('api/check-email/', api.check_email, name='api_check_email'),
-    path('api/validate-registration/', api.validate_registration, name='api_validate_registration'),
-
     path('video_feed/<str:src>', views.video_feed, name='video_feed'),
     path('api/stream/<str:src>', views.receive_stream, name='receive_stream'),
     path('api/upload/', views.upload_license_plate, name='upload_license_plate'),
