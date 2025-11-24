@@ -37,5 +37,8 @@ urlpatterns = [
     path('api/sessions/<int:session_id>/pay/', api_views.mark_session_paid, name='mark_session_paid'),
     path('api/sessions/unpaid/', api_views.get_unpaid_sessions, name='get_unpaid_sessions'),
     path('api/sessions/history/', api_views.get_transaction_history, name='get_transaction_history'),
+    
+    # API endpoints - Trạng thái bãi đỗ
+    path('api/parking/availability/', api_views.parking_availability, name='parking_availability'),
    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

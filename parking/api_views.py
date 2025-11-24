@@ -499,3 +499,61 @@ def get_transaction_history(request):
         'total_pages': (total + limit - 1) // limit,
         'sessions': data
     })
+
+
+# ==================== API KIỂM TRA TRẠNG THÁI BÃI ĐỖ ====================
+
+@require_http_methods(["GET"])
+def parking_availability(request):
+    """
+    API kiểm tra trạng thái bãi đỗ xe
+    
+    Returns:
+        {
+            "success": true,
+            "total_slots": 4,
+            "occupied_slots": 3,
+            "available_slots": 1,
+            "is_full": false,
+            "occupancy_rate": 0.75,
+            "active_vehicles": [
+                {
+                    "license_plate": "30A12345",
+                    "entry_time": "2025-11-20 08:30:00",
+                    "duration_minutes": 45
+                }
+            ]
+        }
+    """
+    MAX_PARKING_SLOTS = 4
+    
+    # Đếm số xe đang đỗ
+    active_sessions = ParkingSession.objects.filter(status='ACTIVE').order_by('entry_time')
+    occupied_count = active_sessions.count()
+    available_count = MAX_PARKING_SLOTS - occupied_count
+    is_full = occupied_count >= MAX_PARKING_SLOTS
+    occupancy_rate = occupied_count / MAX_PARKING_SLOTS if MAX_PARKING_SLOTS > 0 else 0
+    
+    # Lấy danh sách xe đang đỗ
+    active_vehicles = []
+    for session in active_sessions:
+        # Tính thời gian đỗ hiện tại
+        now = timezone.now()
+        duration = int((now - session.entry_time).total_seconds() / 60)
+        
+        active_vehicles.append({
+            'license_plate': session.license_plate,
+            'entry_time': timezone.localtime(session.entry_time).strftime('%Y-%m-%d %H:%M:%S'),
+            'duration_minutes': duration,
+            'session_id': session.id
+        })
+    
+    return JsonResponse({
+        'success': True,
+        'total_slots': MAX_PARKING_SLOTS,
+        'occupied_slots': occupied_count,
+        'available_slots': available_count,
+        'is_full': is_full,
+        'occupancy_rate': round(occupancy_rate, 2),
+        'active_vehicles': active_vehicles
+    })

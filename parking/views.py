@@ -376,6 +376,10 @@ def upload_license_plate(request):
             except:
                 confidence = 0.0
 
+            # ⭐ KIỂM TRA BÃI ĐẦY - Đếm số xe đang đỗ (ACTIVE sessions)
+            MAX_PARKING_SLOTS = 4  # Tổng số chỗ đỗ
+            current_parked = ParkingSession.objects.filter(status='ACTIVE').count()
+            
             # ⭐ TỰ ĐỘNG XÁC ĐỊNH EVENT TYPE (Lần 1 = ENTRY, Lần 2 = EXIT)
             active_session = ParkingSession.objects.filter(
                 license_plate=plate,
@@ -388,6 +392,30 @@ def upload_license_plate(request):
             else:
                 event_type = 'ENTRY'
                 message = f'🚗 Xe {plate} VÀO bãi'
+                
+                # ⚠️ KIỂM TRA BÃI ĐẦY - CHỈ KHI XE VÀO
+                if current_parked >= MAX_PARKING_SLOTS:
+                    print(f"🔴 BÃI ĐẦY: {current_parked}/{MAX_PARKING_SLOTS} - Từ chối xe {plate}")
+                    
+                    # Lưu detection nhưng không tạo session
+                    VehicleDetection.objects.create(
+                        license_plate=plate,
+                        confidence=confidence,
+                        event_type='ENTRY',
+                        camera_source=source,
+                        image_path=image_file if image_file else None
+                    )
+                    
+                    # Trả về 503 Service Unavailable để Raspberry Pi biết tạm dừng detect
+                    return JsonResponse({
+                        "status": "parking_full",
+                        "msg": "Bãi đỗ xe đã đầy",
+                        "plate": plate,
+                        "available_slots": 0,
+                        "total_slots": MAX_PARKING_SLOTS,
+                        "action": "deny_entry",
+                        "display_message": f"BÃI ĐẦY! Vui lòng quay lại sau"
+                    }, status=503)
 
             # Lưu ảnh - Django ImageField sẽ tự động lưu vào media/detections/
             # ✅ LƯU VÀO DATABASE (VehicleDetection)
@@ -410,7 +438,9 @@ def upload_license_plate(request):
                 "event_type": event_type,
                 "message": message,
                 "detection_id": detection.id,
-                "file": filename
+                "file": filename,
+                "available_slots": MAX_PARKING_SLOTS - current_parked,
+                "total_slots": MAX_PARKING_SLOTS
             }
 
             if event_type == 'ENTRY':

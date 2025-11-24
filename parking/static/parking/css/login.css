@@ -191,4 +191,10 @@
         gap: 10px;
         align-items: flex-start;
     }
+}
+
+/* Register Disabled */
+.register-disabled {
+    color: #999;
+    cursor: not-allowed;
 }  

@@ -7,9 +7,141 @@
     <title>User Dashboard - Smart Parking</title>
     <link rel="stylesheet" href="{% static 'parking/css/dashboard_user.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- Styles moved to dashboard_user.css -->
+    <style>
+        /* Toast Notification System */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-width: 300px;
+            max-width: 400px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border-left: 4px solid;
+        }
+        .toast.success { border-left-color: #28a745; }
+        .toast.error { border-left-color: #dc3545; }
+        .toast.warning { border-left-color: #ffc107; }
+        .toast.info { border-left-color: #17a2b8; }
+        .toast-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        .toast-content {
+            flex: 1;
+        }
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #333;
+        }
+        .toast-message {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .toast-close {
+            cursor: pointer;
+            color: #999;
+            font-size: 20px;
+            transition: color 0.2s;
+        }
+        .toast-close:hover {
+            color: #333;
+        }
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        @keyframes slideOutRight {
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+        .toast.removing {
+            animation: slideOutRight 0.3s ease forwards;
+        }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Skeleton Loading */
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s ease-in-out infinite;
+        }
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Pulse Animation for New Detection */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        .pulse-animation {
+            animation: pulse 0.6s ease-in-out;
+        }
+
+        /* Button Loading State */
+        .btn-loading {
+            position: relative;
+            color: transparent !important;
+            pointer-events: none;
+        }
+        .btn-loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid white;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 0.6s linear infinite;
+        }
+    </style>
 </head>
 <body class="dashboard">
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+    
     <div class="dashboard-container">
         <header class="dashboard-header">
             <div class="header-content">
@@ -21,11 +153,11 @@
             </div>
         </header>
 
-        <main class="dashboard-content">
+        <main class="dashboard-content" style="display:block;">
             <!-- Main Content -->
-            <div class="stream-container" style="display:block;">
+            <div class="stream-container" style="display:flex; flex-direction: row;" >
                 <!-- Left Section: Camera + Controls -->
-                <div class="stream-section" style="">
+                <div class="stream-section" style="width: 60%;">
                     <div class="camera-section">
                         <h2>🎥 Camera Giám Sát</h2>
                         <img src="{% url 'video_feed' src='raspberrypi_cam' %}"
@@ -34,257 +166,240 @@
                         id="camera-stream"
                         alt="Live camera stream không khả dụng">
                     </div>
+                    
 
-                        <!-- ================= BARRIER CONTROL BLOCK ================= -->
-                        <div id="barrier-root">
-                            <style>
-                                #barrier-root {
-                                    font-family: Arial, sans-serif;
-                                }
+                    {% comment %} BARRIER CONTROL {% endcomment %}
 
-                                #barrier-root .barrier-container {
-                                    display: flex;
-                                    flex-direction: row;
-                                    gap: 24px;
-                                    padding: 20px;
-                                }
+                    <div>
+                        <div style="margin:0;font-family:system-ui,Arial;background:transparent;color:#e5e7eb;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;">
+                            <div style="width:100%;max-width:600px;padding:16px;">
 
-                                #barrier-root .bar {
-                                    border: 1px solid #ddd;
-                                    padding: 10px;
-                                    margin: 10px 0;
-                                    border-radius: 12px;
-                                    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
-                                    min-width: 220px;
-                                }
+                                <!-- Khoảng cách -->
+                                <div style="border:1px solid #4b5563;border-radius:10px;padding:12px;margin-bottom:12px;background:transparent;">
+                                <div style="font-weight:600;margin-bottom:8px;color:black;">Khoảng cách</div>
+                                <div id="sensorStatus" style="display:none;font-size:13px;margin-bottom:8px;">Chưa đọc dữ liệu.</div>
 
-                                #barrier-root .bar h3 {
-                                    margin-top: 0;
-                                    margin-bottom: 8px;
-                                }
-
-                                #barrier-root .dist {
-                                    margin-bottom: 1rem;
-                                }
-
-                                #barrier-root button {
-                                    background-color: #6279ff;
-                                    color: white;
-                                    border: none;
-                                    border-radius: 1rem;
-                                    box-shadow: 0px 0px 8px 2px rgb(207, 207, 207);
-                                    transition: all 0.3s ease;
-                                    padding: 0.5rem 1rem;
-                                    margin-right: 8px;
-                                    margin-bottom: 4px;
-                                }
-
-                                #barrier-root button:hover {
-                                    background-color: #3d3c9b;
-                                    transform: translateY(-2px);
-                                    cursor: pointer;
-                                }
-
-                                #barrier-root #info {
-                                    margin-top: 12px;
-                                    padding: 0 20px 10px 20px;
-                                }
-                            </style>
-
-                            <div class="barrier-container">
-                                <div class="bar">
-                                    <h3>Barrier 1</h3>
-                                    <div class="dist" id="barrier-s1">Distance: - cm | State: -</div>
-                                    <button onclick="barrierCmd('B1 OPEN')">Open</button>
-                                    <button onclick="barrierCmd('B1 CLOSE')">Close</button>
-                                    <button onclick="barrierCmd('B1 TOGGLE')">Toggle</button>
+                                <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+                                    <div style="flex:1;min-width:120px;border:1px solid #374151;border-radius:8px;padding:8px;">
+                                    <div style="font-size:13px;color:#9ca3af;margin-bottom:4px;color:black;">Cửa vào</div>
+                                    <div id="sensor1Filtered" style="font-size:20px;font-weight:600;color:black;">-- cm</div>
+                                    <div style="font-size:12px;color:black;">Raw: <span id="sensor1Raw">--</span> cm</div>
+                                    </div>
+                                    <div style="flex:1;min-width:120px;border:1px solid #374151;border-radius:8px;padding:8px;">
+                                    <div style="font-size:13px;color:#9ca3af;margin-bottom:4px;color:black;">Cửa ra</div>
+                                    <div id="sensor2Filtered" style="font-size:20px;font-weight:600;color:black;">-- cm</div>
+                                    <div style="font-size:12px;color:black;">Raw: <span id="sensor2Raw">--</span> cm</div>
+                                    </div>
                                 </div>
 
-                                <div class="bar">
-                                    <h3>Barrier 2</h3>
-                                    <div class="dist" id="barrier-s2">Distance: - cm | State: -</div>
-                                    <button onclick="barrierCmd('B2 OPEN')">Open</button>
-                                    <button onclick="barrierCmd('B2 CLOSE')">Close</button>
-                                    <button onclick="barrierCmd('B2 TOGGLE')">Toggle</button>
+                                <button id="btnReadSensors"
+                                        style="display:none;border:none;padding:6px 12px;border-radius:999px;font-size:13px;cursor:pointer;background:transparent;color:#f9fafb;">
+                                    📡 Đọc cảm biến
+                                </button>
                                 </div>
+
+                                <!-- Điều khiển Barrier -->
+                                <div style="border:1px solid #4b5563;border-radius:10px;padding:12px;margin-bottom:12px;background:transparent;">
+                                <div style="font-weight:600;margin-bottom:8px;color:black;">Điều khiển Barriers</div>
+
+                                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                                    <!-- Cửa vào -->
+                                    <div style="flex:1;min-width:150px;">
+                                    <div style="font-size:13px;margin-bottom:4px;color:black;">Cửa vào</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                                        <button id="btnServo1"
+                                                style="border:none;padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer;background:#3b82f6;color:#f9fafb;">
+                                        Mở
+                                        </button>
+                                    </div>
+                                    <div id="servo1Status" style="font-size:12px;color:#60a5fa;">Cửa vào đang ĐÓNG (0°).</div>
+                                    </div>
+
+                                    <!-- Cửa ra -->
+                                    <div style="flex:1;min-width:150px;">
+                                    <div style="font-size:13px;margin-bottom:4px;color:black;">Cửa ra</div>
+                                    <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px;">
+                                        <button id="btnServo2"
+                                                style="border:none;padding:6px 10px;border-radius:999px;font-size:13px;cursor:pointer;background:#3b82f6;color:#f9fafb;">
+                                        Mở
+                                        </button>
+                                    </div>
+                                    <div id="servo2Status" style="font-size:12px;color:#60a5fa;">Cửa ra đang ĐÓNG (0°).</div>
+                                    </div>
+                                </div>
+
+                                <button id="btnResetServo"
+                                        style="margin-top:8px;border:none;padding:6px 12px;border-radius:999px;font-size:13px;cursor:pointer;background:#ef4444;color:#fee2e2;">
+                                    🔄 Đóng cả 2 Barrier
+                                </button>
+                                <div id="resetStatus" style="font-size:12px;color:#60a5fa;margin-top:4px;">Chưa reset.</div>
+                                </div>
+
+                                <!-- Log (ẩn) -->
+                                <div style="display:none;border:1px solid #4b5563;border-radius:10px;padding:8px;background:#020617;">
+                                <div style="font-size:13px;margin-bottom:4px;">Log</div>
+                                <pre id="log" style="margin:0;font-size:11px;max-height:120px;overflow-y:auto;white-space:pre-line;"></pre>
+                                </div>
+
                             </div>
-
-                            <div id="info">
-                                Server status: <span id="barrier-status">-</span>
                             </div>
 
                             <script>
-                                // Nếu server ở IP khác, sửa BARRIER_BASE_URL thành "http://IP:5000"
-                                const BARRIER_BASE_URL = "http://172.20.10.3:5000";
-
-                                async function barrierCmd(command) {
-                                    const statusEl = document.getElementById("barrier-status");
-                                    statusEl.innerText = "Sending " + command;
-                                    try {
-                                        const r = await fetch(
-                                            BARRIER_BASE_URL + "/cmd/" + encodeURIComponent(command)
-                                        );
-                                        const j = await r.json();
-                                        if (j.success) {
-                                            statusEl.innerText = "OK: " + j.response;
-                                            await barrierUpdateStatusFromResponse(j.response);
-                                        } else {
-                                            statusEl.innerText = "ERR: " + j.error;
-                                        }
-                                    } catch (e) {
-                                        statusEl.innerText = "Fetch error: " + e;
-                                    }
-                                }
-
-                                async function barrierPoll() {
-                                    const statusEl = document.getElementById("barrier-status");
-                                    try {
-                                        const res = await fetch(BARRIER_BASE_URL + "/barrier/status");
-                                        const j = await res.json();
-                                        if (j.success) {
-                                            document.getElementById("barrier-s1").innerText =
-                                                "Distance: " + j.dist1 + " cm | State: " + j.s1;
-                                            document.getElementById("barrier-s2").innerText =
-                                                "Distance: " + j.dist2 + " cm | State: " + j.s2;
-                                            statusEl.innerText = "Connected";
-                                        } else {
-                                            statusEl.innerText = "Not connected";
-                                        }
-                                    } catch (e) {
-                                        statusEl.innerText = "Error: " + e;
-                                    }
-                                }
-
-                                async function barrierUpdateStatusFromResponse(resp) {
-                                    if (!resp) return;
-                                    const pairs = resp.split(";");
-                                    const map = {};
-                                    for (let p of pairs) {
-                                        const kv = p.split(":");
-                                        if (kv.length == 2) map[kv[0]] = kv[1];
-                                    }
-                                    if (map.DIST1)
-                                        document.getElementById("barrier-s1").innerText =
-                                            "Distance: " +
-                                            map.DIST1 +
-                                            " cm | State: " +
-                                            (map.S1 || "-");
-                                    if (map.DIST2)
-                                        document.getElementById("barrier-s2").innerText =
-                                            "Distance: " +
-                                            map.DIST2 +
-                                            " cm | State: " +
-                                            (map.S2 || "-");
-                                }
-
-                                setInterval(barrierPoll, 1000);
-                                barrierPoll();
-                            </script>
-                        </div>
-                        <!-- =============== END BARRIER CONTROL BLOCK =============== -->
-                    </div>
-
-                    <!-- ================= PARKING SLOT BLOCK ================= -->
-                    <div id="parking-root" class="detail-card parking-visualization" style="width:100%;">
-                        <style>
-                            #parking-root {
-                                font-family: Arial, sans-serif;
+                            function addLog(message) {
+                                const logBox = document.getElementById("log");
+                                if (!logBox) return;
+                                const time = new Date().toLocaleTimeString();
+                                logBox.textContent += "[" + time + "] " + message + "\n";
+                                logBox.scrollTop = logBox.scrollHeight;
                             }
 
-                            #parking-root h2 {
-                                text-align: center;
-                                width: 100%;
-                                margin-top: 20px;
-                                margin-bottom: 16px;
+                            function getBaseUrl() {
+                                return "http://172.20.10.2:5000";
                             }
 
-                            #parking-root #slots {
-                                display: grid;
-                                grid-template-columns: repeat(2, 150px);
-                                grid-template-rows: repeat(2, 150px);
-                                gap: 20px;
-                                justify-content: center;
-                                padding: 10px 20px 0 20px;
-                            }
+                            let sensorInterval = null;
+                            let servo1Open = false; // false = ĐÓNG (0°)
+                            let servo2Open = false;
 
-                            #parking-root .slot {
-                                width: 150px;
-                                height: 150px;
-                                border-radius: 12px;
-                                color: white;
-                                display: flex;
-                                flex-direction: column;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 20px;
-                                box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
-                                border: 2px solid #ccc;
-                                transition: background 0.3s;
-                                background-color: transparent; /* ô trống không fill màu */
-                            }
+                            async function readSensors() {
+                                const sensorStatus = document.getElementById("sensorStatus");
+                                const base = getBaseUrl();
 
-                            #parking-root .slot b {
-                                margin-bottom: 4px;
-                            }
-
-                            #parking-root .occupied {
-                                background-color: #e53935;
-                            }
-
-                            #parking-root #parking-status {
-                                text-align: center;
-                                margin-top: 10px;
-                                font-size: 16px;
-                                padding-bottom: 20px;
-                            }
-                        </style>
-
-                        <h2>🅿️ Bãi đỗ xe thông minh (4 ô)</h2>
-                        <div id="slots"></div>
-                        <div id="parking-status">Đang kết nối...</div>
-
-                        <script>
-                            // Nếu server ở IP khác, sửa PARKING_BASE_URL thành "http://IP:5000"
-                            const PARKING_BASE_URL = "http://172.20.10.2:5000";
-
-                            async function parkingPoll() {
-                                const statusEl = document.getElementById("parking-status");
                                 try {
-                                    const res = await fetch(PARKING_BASE_URL + "/parking/status");
-                                    const j = await res.json();
-                                    const container = document.getElementById("slots");
-                                    if (!j.success) {
-                                        statusEl.innerText = "❌ Mất kết nối hoặc không có dữ liệu";
-                                        return;
-                                    }
-                                    container.innerHTML = "";
-                                    j.slots.forEach((s) => {
-                                        const div = document.createElement("div");
-                                        div.className = "slot";
-                                        if (s.state === "OCCUPIED") div.classList.add("occupied");
-                                        div.innerHTML =
-                                            `<b>Ô ${s.id}</b>` +
-                                            `<br>` +
-                                            (s.state === "OCCUPIED" ? "🚗 Đã chiếm" : "🅿️ Trống") +
-                                            `<br><small>${s.dist} cm</small>`;
-                                        container.appendChild(div);
-                                    });
-                                    statusEl.innerText =
-                                        "✅ Đã cập nhật lúc " + new Date().toLocaleTimeString();
-                                } catch (e) {
-                                    statusEl.innerText = "⚠️ Lỗi khi lấy dữ liệu";
+                                const res = await fetch(base + "/sensors");
+                                if (!res.ok) throw new Error("HTTP " + res.status);
+                                const data = await res.json();
+
+                                const s1Raw = data.raw?.sensor1;
+                                const s2Raw = data.raw?.sensor2;
+                                const s1Filtered = data.filtered?.sensor1;
+                                const s2Filtered = data.filtered?.sensor2;
+
+                                document.getElementById("sensor1Raw").textContent = (s1Raw ?? "--");
+                                document.getElementById("sensor2Raw").textContent = (s2Raw ?? "--");
+                                document.getElementById("sensor1Filtered").textContent =
+                                    (s1Filtered ?? "--") + (s1Filtered != null ? " cm" : "");
+                                document.getElementById("sensor2Filtered").textContent =
+                                    (s2Filtered ?? "--") + (s2Filtered != null ? " cm" : "");
+
+                                if (sensorStatus) {
+                                    sensorStatus.textContent = "Đã đọc dữ liệu cảm biến (auto mỗi 1s).";
+                                    sensorStatus.style.color = "#4ade80";
+                                }
+
+                                addLog("Sensors: " + JSON.stringify(data));
+                                } catch (err) {
+                                if (sensorStatus) {
+                                    sensorStatus.textContent = "Lỗi khi đọc cảm biến: " + err;
+                                    sensorStatus.style.color = "#f97373";
+                                }
+                                addLog("Read sensors FAILED: " + err);
+                                console.error(err);
                                 }
                             }
 
-                            setInterval(parkingPoll, 1000);
-                            parkingPoll();
-                        </script>
+                            async function setServo(servoId, angle, isOpen) {
+                                const base = getBaseUrl();
+                                const statusEl = document.getElementById(servoId === 1 ? "servo1Status" : "servo2Status");
+                                statusEl.textContent = "Đang gửi lệnh...";
+                                statusEl.style.color = "#60a5fa";
+
+                                try {
+                                const res = await fetch(base + "/servo/" + servoId, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ angle: angle })
+                                });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    statusEl.textContent = "Lỗi: " + (data.error || res.status);
+                                    statusEl.style.color = "#f97373";
+                                    addLog("Servo " + servoId + " FAILED: " + JSON.stringify(data));
+                                    return;
+                                }
+
+                                const doorName = servoId === 1 ? "Cửa vào" : "Cửa ra";
+                                const stateText = isOpen ? "MỞ" : "ĐÓNG";
+                                statusEl.textContent =
+                                    doorName + " đang " + stateText + " (" + angle + "°) (resp: " + (data.arduino_response || "OK") + ")";
+                                statusEl.style.color = "#4ade80";
+
+                                addLog("Servo " + servoId + " → " + angle + "° (" + stateText + "): " + JSON.stringify(data));
+                                } catch (err) {
+                                statusEl.textContent = "Lỗi gửi lệnh: " + err;
+                                statusEl.style.color = "#f97373";
+                                addLog("Servo " + servoId + " FAILED: " + err);
+                                console.error(err);
+                                }
+                            }
+
+                            async function resetServos() {
+                                const base = getBaseUrl();
+                                const resetStatus = document.getElementById("resetStatus");
+                                resetStatus.textContent = "Đang reset...";
+                                resetStatus.style.color = "#60a5fa";
+
+                                try {
+                                const res = await fetch(base + "/servo/reset", { method: "POST" });
+                                const data = await res.json();
+                                if (!res.ok) {
+                                    resetStatus.textContent = "Lỗi reset: " + (data.error || res.status);
+                                    resetStatus.style.color = "#f97373";
+                                    addLog("Reset FAILED: " + JSON.stringify(data));
+                                    return;
+                                }
+
+                                resetStatus.textContent = "Đã đóng cả 2 barrier về 0° (resp: " + (data.arduino_response || "OK") + ")";
+                                resetStatus.style.color = "#4ade80";
+                                addLog("Reset OK: " + JSON.stringify(data));
+
+                                // cập nhật trạng thái UI & nút
+                                servo1Open = false;
+                                servo2Open = false;
+                                document.getElementById("btnServo1").textContent = "Mở";
+                                document.getElementById("btnServo2").textContent = "Mở";
+                                document.getElementById("servo1Status").textContent = "Cửa vào đang ĐÓNG (0°).";
+                                document.getElementById("servo2Status").textContent = "Cửa ra đang ĐÓNG (0°).";
+                                document.getElementById("servo1Status").style.color = "#60a5fa";
+                                document.getElementById("servo2Status").style.color = "#60a5fa";
+                                } catch (err) {
+                                resetStatus.textContent = "Lỗi reset: " + err;
+                                resetStatus.style.color = "#f97373";
+                                addLog("Reset FAILED: " + err);
+                                console.error(err);
+                                }
+                            }
+
+                            document.getElementById("btnReadSensors").addEventListener("click", readSensors);
+
+                            document.getElementById("btnServo1").addEventListener("click", async () => {
+                                servo1Open = !servo1Open;
+                                const angle = servo1Open ? 90 : 0;
+                                document.getElementById("btnServo1").textContent = servo1Open ? "Đóng" : "Mở";
+                                await setServo(1, angle, servo1Open);
+                            });
+
+                            document.getElementById("btnServo2").addEventListener("click", async () => {
+                                servo2Open = !servo2Open;
+                            const angle = servo2Open ? 90 : 0;
+                                document.getElementById("btnServo2").textContent = servo2Open ? "Đóng" : "Mở";
+                                await setServo(2, angle, servo2Open);
+                            });
+
+                            document.getElementById("btnResetServo").addEventListener("click", resetServos);
+
+                            window.addEventListener("load", () => {
+                                addLog("Barrier client loaded.");
+                                if (sensorInterval) clearInterval(sensorInterval);
+                                sensorInterval = setInterval(readSensors, 1000); // auto mỗi 1s
+                            });
+                            </script>
                     </div>
-                    <!-- =============== END PARKING SLOT BLOCK =============== -->
                 </div>
+              
 
                 <!-- Right Section: Detections -->
-                <div class="detection-section">
+                <div class="detection-section" style="width: 40%;">
                     <div class="latest-detection" id="latest-detection">
                         <h3>📸 Phát hiện mới nhất</h3>
                         <div class="detection-content">
@@ -352,7 +467,7 @@
                             ❌ Đóng
                         </button>
                         <button id="modalPayButton" onclick="payFromModal()" style="flex: 2; padding: 15px; border: none; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: 700; box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4); transition: all 0.3s;">
-                            💳 THANH TOÁN NGAY
+                            <span id="payButtonText">💳 THANH TOÁN NGAY</span>
                         </button>
                     </div>
                 </div>
@@ -388,6 +503,39 @@
 
     <!-- Detection Updates -->
 <script>
+    // ================= TOAST NOTIFICATION SYSTEM =================
+    function showToast(type, title, message, duration = 5000) {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        
+        toast.innerHTML = `
+            <div class="toast-icon">${icons[type] || 'ℹ️'}</div>
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+            <div class="toast-close" onclick="this.parentElement.remove()">×</div>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Auto remove
+        setTimeout(() => {
+            toast.classList.add('removing');
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+        
+        return toast;
+    }
+
     // ================= DETECTION UPDATES SECTION =================
     // 📸 Lấy dữ liệu nhận diện từ Django
     let currentPage = 1;
@@ -421,11 +569,16 @@
         document.getElementById('modalExitTime').textContent = formatDateTime(session.exit_time);
         document.getElementById('modalDuration').textContent = session.duration_minutes + ' phút';
         document.getElementById('modalFee').textContent = formatMoney(session.fee);
-        document.getElementById('paymentModal').style.display = 'flex';
+        
+        const modal = document.getElementById('paymentModal');
+        modal.style.display = 'flex';
         
         // Play notification sound
         const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuAzvLZiTYIF2Sz5euqWBYKR6Hn8rhqJgU4jtXwy3opBSl+zPDckj8LFV6x6OumWRIKRp/h8sFuJwU3jdXwyXwqBSl9zPDbk0ALF1606OytVxYKSKTo87lrJgU6j9byz3wqBSiAz/LbiTcIF2i56+qnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBQ==');
         audio.play().catch(e => console.log('Audio play failed:', e));
+        
+        // Show notification toast
+        showToast('info', '🚗 Xe ra bãi', `Biển số ${session.license_plate} - Phí: ${formatMoney(session.fee)}`, 3000);
     }
 
     function closePaymentModal() {
@@ -439,22 +592,44 @@
         const sessionId = currentModalSession.id;
         const licensePlate = currentModalSession.license_plate;
         const fee = currentModalSession.fee;
+        
+        const button = document.getElementById('modalPayButton');
+        const buttonText = document.getElementById('payButtonText');
+        
+        // Show loading state
+        button.disabled = true;
+        button.classList.add('btn-loading');
+        buttonText.textContent = 'Đang xử lý...';
 
         try {
             const res = await fetch(`/api/sessions/${sessionId}/pay/`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrf-token]').content
+                }
             });
             const data = await res.json();
 
             if (data.success) {
+                // Success feedback
+                showToast('success', 'Thanh toán thành công!', 
+                    `Xe ${licensePlate} đã thanh toán ${formatMoney(fee)}`, 4000);
+                
                 closePaymentModal();
-                alert(`✅ THANH TOÁN THÀNH CÔNG!\n\n🚗 Xe: ${licensePlate}\n💰 Số tiền: ${formatMoney(fee)}\n\n✨ Cảm ơn quý khách!`);
+                
+                // Refresh detection list after small delay
+                setTimeout(() => updateDetections(true), 500);
             } else {
-                alert('❌ Lỗi: ' + data.error);
+                showToast('error', 'Lỗi thanh toán', data.error || 'Không thể xử lý thanh toán');
             }
         } catch (error) {
             console.error('Error paying session:', error);
-            alert('❌ Lỗi khi thanh toán: ' + error.message);
+            showToast('error', 'Lỗi kết nối', 'Không thể kết nối đến server. Vui lòng thử lại.');
+        } finally {
+            // Reset button state
+            button.disabled = false;
+            button.classList.remove('btn-loading');
+            buttonText.textContent = '💳 THANH TOÁN NGAY';
         }
     }
 
@@ -510,13 +685,15 @@
     }
 
     async function updateDetections(reset = false) {
+        const latestDetectionEl = document.getElementById("latest-detection");
+        
         try {
             const response = await fetch("{% url 'latest_detections' %}");
             const data = await response.json();
 
-            // ✅ Hiển thị phát hiện mới nhất
+            // ✅ Hiển thị phát hiện mới nhất với animation
             if (data.latest) {
-                document.getElementById("latest-detection").innerHTML = `
+                const newContent = `
                     <h3>📸 Phát hiện mới nhất</h3>
                     <div class="detection-content">
                         <div><b>${data.latest.time}</b></div>
@@ -526,6 +703,13 @@
                         ${data.latest.path ? `<img src="/media/${data.latest.path}" alt="latest" style="width:100%;border-radius:8px;margin-top:6px;">` : ""}
                     </div>
                 `;
+                
+                // Only animate if content changed
+                if (latestDetectionEl.innerHTML !== newContent) {
+                    latestDetectionEl.classList.add('pulse-animation');
+                    latestDetectionEl.innerHTML = newContent;
+                    setTimeout(() => latestDetectionEl.classList.remove('pulse-animation'), 600);
+                }
 
                 // Check if EXIT event and show payment modal
                 checkForExitAndShowPayment(data.latest);
@@ -541,6 +725,7 @@
             renderHistory();
         } catch (error) {
             console.error("❌ Lỗi cập nhật nhận diện:", error);
+            showToast('error', 'Lỗi cập nhật', 'Không thể tải dữ liệu phát hiện mới', 3000);
         }
     }
 
@@ -604,6 +789,17 @@
         updateDetections(true); // Reset=true để tự động cập nhật lịch sử mới nhất mỗi 3 giây
     }, 3000);
 
+</script>
+<audio id="alertSound" 
+       src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuAzvLZiTYIF2Sz5euqWBYKR6Hn8rhqJgU4jtXwy3opBSl+zPDckj8LFV6x6OumWRIKRp/h8sFuJwU3jdXwyXwqBSl9zPDbk0ALF1606OytVxYKSKTo87lrJgU6j9byz3wqBSiAz/LbiTcIF2i56+qnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBQ==" 
+       muted>
+</audio>
+
+<script>
+// Mở âm thanh sau cú click đầu tiên
+document.addEventListener("click", () => {
+    document.getElementById("alertSound").muted = false;
+}, { once: true });
 </script>
 
 </body>

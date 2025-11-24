@@ -36,15 +36,16 @@ class ParkingSession(models.Model):
     Quản lý giao dịch bãi đỗ xe: Từ lúc vào (ENTRY) đến lúc ra (EXIT)
     
     LOGIC TÍNH PHÍ:
-    - 30 phút đầu: MIỄN PHÍ (0đ)
-    - 1 giờ đầu tiên (sau 30p miễn phí): 5.000đ
-    - Mỗi giờ tiếp theo: 3.000đ/giờ
+    - Vào bãi: 5.000đ (phí cố định cho 90 phút đầu)
+    - Mỗi giờ sau 90 phút: 3.000đ/giờ (làm tròn lên)
     
     Ví dụ:
-    - 20 phút: 0đ (miễn phí)
-    - 45 phút: 5.000đ (vào giờ đầu)
-    - 1h 30p: 5.000đ (giờ đầu) + 3.000đ (giờ thứ 2) = 8.000đ
-    - 2h 45p: 5.000đ + 3.000đ + 3.000đ = 11.000đ
+    - 5 phút: 5.000đ
+    - 45 phút: 5.000đ
+    - 90 phút: 5.000đ
+    - 120 phút (2h): 5.000đ + 3.000đ = 8.000đ
+    - 150 phút (2.5h): 5.000đ + 3.000đ = 8.000đ (làm tròn lên)
+    - 180 phút (3h): 5.000đ + 6.000đ = 11.000đ
     """
     STATUS_CHOICES = [
         ('ACTIVE', 'Đang đỗ'),

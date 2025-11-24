@@ -1,0 +1,489 @@
+/* ==================== Smart Parking – Pro UI ==================== */
+/* Màu sắc có độ tương phản AA, nhấn mạnh nội dung thay vì viền ồn ào */
+:root{
+  --bg: #F6F8FB;
+  --surface: #FFFFFF;
+  --surface-2: #F2F5FA;
+  --text: #1F2937;
+  --muted: #6B7280;
+
+  --primary: #2563EB;        /* xanh lam chính */
+  --primary-600:#1D4ED8;
+  --success:#16A34A;         /* trạng thái OK */
+  --warning:#F59E0B;
+  --danger:#DC2626;
+
+  --border:#E5E7EB;
+  --shadow: 0 1px 2px rgba(0,0,0,.06), 0 8px 24px rgba(17, 24, 39, .06);
+  --radius: 12px;
+  --radius-sm: 10px;
+}
+
+/* ==================== Base ==================== */
+*{ box-sizing:border-box }
+html{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale }
+body.dashboard{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, "Noto Sans", "Helvetica Neue";
+  line-height:1.5;
+}
+
+/* Spacing hệ thống */
+:root{
+  --space-1: .5rem;   /* 8px */
+  --space-2: .75rem;  /* 12px */
+  --space-3: 1rem;    /* 16px */
+  --space-4: 1.25rem; /* 20px */
+  --space-5: 1.5rem;  /* 24px */
+}
+
+.dashboard-container{ padding: var(--space-5); }
+
+/* ==================== Header ==================== */
+.dashboard-header{
+  background:linear-gradient(180deg, #2563EB, #1D4ED8);
+  border-radius: var(--radius);
+  color:#fff;
+  box-shadow: var(--shadow);
+  padding: var(--space-4) var(--space-5);
+}
+.dashboard-header .header-content{
+  display:flex; align-items:center; justify-content:space-between; gap: var(--space-3);
+}
+.dashboard-header h1{ margin:0; font-weight:700; font-size: clamp(18px, 2.2vw, 22px); letter-spacing:.2px }
+.header-actions{ display:flex; align-items:center; gap: var(--space-2); }
+.header-actions .welcome-text{ margin:0; opacity:.95; font-weight:500 }
+.header-actions .btn{ background:#fff; color:var(--primary-600); border:1px solid #DCE5FF }
+
+/* ==================== Layout ==================== */
+.dashboard-content{
+  display:grid; gap: var(--space-5);
+  grid-template-columns: 2fr 1.1fr;     /* trái rộng, phải gọn */
+  margin-top: var(--space-5);
+}
+
+.stream-section{ grid-column: 1 / -1; }
+
+/* Khối (Card) dùng chung */
+.card, .detail-card, .detection-section, .stream-section, .parking-visualization{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+}
+.card h2, .card h3, .detection-section h3, .parking-visualization h3, .camera-section h2{
+  margin:0 0 var(--space-3); font-size: 14px; text-transform:uppercase; letter-spacing:.6px; color:#0F172A;
+}
+
+/* ==================== Camera ==================== */
+#camera-stream{
+  width:100%; height:auto; max-height: 420px; object-fit:cover;
+  border-radius: var(--radius-sm);
+  border:1px solid var(--border);
+  background:#000;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
+}
+.action-buttons{ display:flex; gap: var(--space-2); margin-top: var(--space-3); }
+.btn{
+  appearance:none; border:none; cursor:pointer; user-select:none;
+  font-weight:600; font-size: 14px;
+  padding: .65rem .9rem; border-radius:10px;
+  transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,.04);
+}
+.btn:active{ transform: translateY(1px) }
+.btn-primary{ background:var(--primary); color:#fff }
+.btn-primary:hover{ background:var(--primary-600) }
+.btn-secondary{ background:var(--surface-2); color:var(--text); border:1px solid var(--border) }
+.btn-secondary:hover{ background:#eaf0fb }
+
+/* Trạng thái tập trung – hỗ trợ bàn phím */
+.btn:focus-visible{
+  outline: 3px solid rgba(37,99,235,.35);
+  outline-offset:2px;
+}
+
+/* ==================== Sơ đồ bãi xe ==================== */
+.parking-visualization .status-header{
+  display:flex; align-items:center; justify-content:space-between; gap: var(--space-3);
+}
+.occupancy-badge{
+  font-weight:700; font-size:12px; letter-spacing:.3px;
+  padding: .3rem .55rem; border-radius: 999px;
+  color:#065F46; background: #D1FAE5; border:1px solid #A7F3D0;
+}
+.parking-lot-grid{ display:grid; gap: var(--space-2); grid-template-columns: repeat(3, 1fr); margin-top: var(--space-3); }
+.parking-spot{
+  min-height: 74px; border-radius: 10px; border:1px solid var(--border);
+  background: linear-gradient(#FFFFFF, #FAFBFE);
+  position:relative; display:flex; align-items:center; justify-content:center;
+  transition: box-shadow .15s ease, transform .06s ease;
+}
+.parking-spot:hover{ box-shadow: 0 0 0 3px #E5EDFF inset }
+.spot-number{
+  position:absolute; top:6px; left:8px; font-size:12px; color:var(--muted); font-weight:700;
+}
+.parking-spot.empty{ background:#F0FDF4; border-color:#C6F6D5 }
+.parking-spot.occupied{ background:#FEF2F2; border-color:#FECACA }
+.parking-spot.error{ background:#FFFBEB; border-color:#FDE68A }
+
+.parking-legend{ display:flex; gap: 14px; margin-top: var(--space-3); color:var(--muted); font-size:13px }
+.parking-legend .legend-item{ display:flex; align-items:center; gap:6px }
+.parking-legend .spot{ width:18px; height:12px; border-radius:4px; border:1px solid var(--border); display:inline-block }
+.parking-legend .empty{ background:#F0FDF4; border-color:#C6F6D5 }
+.parking-legend .occupied{ background:#FEF2F2; border-color:#FECACA }
+.parking-legend .reserved{ background:#FFFBEB; border-color:#FDE68A }
+
+/* ==================== Nhận diện ==================== */
+.detection-section{ display:flex; flex-direction:column; gap: var(--space-4); }
+.detection-content{
+  background:var(--surface-2); border:1px solid var(--border);
+  padding: var(--space-3); border-radius: var(--radius-sm);
+}
+.detection-content img{
+  width:100%; border-radius: var(--radius-sm);
+  border:1px solid var(--border); background:#000; margin-top: var(--space-2);
+}
+
+/* Bảng gọn, hàng cao 40px, sticky head */
+.history-section h3{ margin:0 }
+.detection-table{
+  width:100%; border-collapse:separate; border-spacing:0; font-size:14px;
+  border:1px solid var(--border); border-radius: var(--radius-sm); overflow:hidden;
+}
+.detection-table thead th{
+  background:#F8FAFF; color:#0F172A; text-align:left; font-weight:700;
+  padding:.7rem .8rem; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:1;
+}
+.detection-table tbody td{
+  padding:.65rem .8rem; border-bottom:1px solid var(--border); color:#111827;
+}
+.detection-table tbody tr:hover{ background:#F9FBFF }
+.detection-table a{ color:var(--primary); text-decoration:none; font-weight:600 }
+.detection-table a:hover{ text-decoration:underline }
+
+/* Badge nhỏ cho độ tin cậy (nếu muốn thêm class .conf-*) */
+.badge{ display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:.15rem .5rem; font-size:12px; font-weight:700 }
+.badge.ok{ background:#DCFCE7; color:#065F46; border:1px solid #A7F3D0 }
+.badge.low{ background:#FEF3C7; color:#92400E; border:1px solid #FCD34D }
+
+/* ==================== States & skeleton ==================== */
+.skeleton{
+  background: linear-gradient(90deg, #EFF3F9 25%, #F6F8FB 37%, #EFF3F9 63%);
+  background-size:400% 100%; animation:skeleton 1.2s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+@keyframes skeleton{ 0%{background-position:100% 50%} 100%{background-position:0 50%} }
+
+/* ==================== Scrollbar (webkit) ==================== */
+::-webkit-scrollbar{ height: 10px; width: 10px }
+::-webkit-scrollbar-thumb{ background:#CFD8EA; border-radius:10px }
+::-webkit-scrollbar-thumb:hover{ background:#B9C7E6 }
+
+/* ==================== Responsive ==================== */
+@media (max-width: 1200px){
+  .dashboard-content{ grid-template-columns: 1fr }
+  #camera-stream{ max-height: 360px }
+}
+@media (max-width: 640px){
+  .dashboard-container{ padding: var(--space-3) }
+  .dashboard-header{ border-radius: 10px }
+  .card, .detail-card, .detection-section, .stream-section, .parking-visualization{ padding: var(--space-3) }
+}
+
+
+.slot {
+    width: 150px;
+    height: 150px;
+    border-radius: 12px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    border: 2px solid #ccc;
+    transition: background 0.3s;
+    background-color: #4CAF50; /* ô trống - màu xanh */
+}
+.slot.occupied { 
+    background-color: #E53935; /* ô đã đỗ - màu đỏ */
+}
+.slot:hover { 
+    border-color: #FFC107; 
+    cursor: pointer; 
+}
+
+.detail-card {
+  background-color: rgb(51, 131, 217) !important;
+}
+
+/* ==================== Barrier Control ==================== */
+#barrier-root {
+    font-family: Arial, sans-serif;
+}
+
+#barrier-root .barrier-container {
+    display: flex;
+    flex-direction: row;
+    gap: 24px;
+    padding: 20px;
+}
+
+#barrier-root .bar {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 12px;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.1);
+    min-width: 220px;
+}
+
+#barrier-root .bar h3 {
+    margin-top: 0;
+    margin-bottom: 8px;
+}
+
+#barrier-root .dist {
+    margin-bottom: 1rem;
+}
+
+#barrier-root button {
+    background-color: #6279ff;
+    color: white;
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0px 0px 8px 2px rgb(207, 207, 207);
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    margin-right: 8px;
+    margin-bottom: 4px;
+}
+
+#barrier-root button:hover {
+    background-color: #3d3c9b;
+    transform: translateY(-2px);
+    cursor: pointer;
+}
+
+#barrier-root #info {
+    margin-top: 12px;
+    padding: 0 20px 10px 20px;
+}
+
+/* ==================== Parking Slot Visualization ==================== */
+#parking-root {
+    font-family: Arial, sans-serif;
+}
+
+#parking-root h2 {
+    text-align: center;
+    width: 100%;
+    margin-top: 20px;
+    margin-bottom: 16px;
+}
+
+#parking-root #slots {
+    display: grid;
+    grid-template-columns: repeat(2, 150px);
+    grid-template-rows: repeat(2, 150px);
+    gap: 20px;
+    justify-content: center;
+    padding: 10px 20px 0 20px;
+}
+
+#parking-root .slot {
+    width: 150px;
+    height: 150px;
+    border-radius: 12px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+    border: 2px solid #ccc;
+    transition: background 0.3s;
+    background-color: transparent;
+}
+
+#parking-root .slot b {
+    margin-bottom: 4px;
+}
+
+#parking-root .occupied {
+    background-color: #e53935;
+}
+
+#parking-root #parking-status {
+    text-align: center;
+    margin-top: 10px;
+    font-size: 16px;
+    padding-bottom: 20px;
+}
+
+/* ==================== Payment Modal ==================== */
+#paymentModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+
+#paymentModal[style*="display: flex"] {
+    display: flex !important;
+}
+
+.payment-modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    animation: slideIn 0.3s ease;
+}
+
+.payment-modal-header {
+    text-align: center;
+}
+
+.payment-modal-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+}
+
+.payment-modal-title {
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.payment-modal-license {
+    font-size: 36px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.payment-modal-details {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.payment-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    text-align: left;
+}
+
+.payment-modal-label {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 3px;
+}
+
+.payment-modal-value {
+    font-weight: 600;
+    color: #333;
+    font-size: 14px;
+}
+
+.payment-modal-duration {
+    font-weight: 600;
+    color: #f5576c;
+    font-size: 16px;
+}
+
+.payment-modal-fee {
+    font-size: 32px;
+    font-weight: bold;
+    color: #28a745;
+    text-shadow: 2px 2px 4px rgba(40, 167, 69, 0.2);
+}
+
+.payment-modal-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.payment-modal-btn-close {
+    flex: 1;
+    padding: 15px;
+    border: 2px solid #ddd;
+    background: white;
+    color: #666;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.payment-modal-btn-pay {
+    flex: 2;
+    padding: 15px;
+    border: none;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 8px;
+    font-size: 18px;
+    cursor: pointer;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+    transition: all 0.3s;
+}
+
+.payment-modal-btn-pay:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.5);
+}
+
+.payment-modal-btn-pay:active {
+    transform: translateY(0);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-50px) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+}
+
+/* ==================== Load More Button ==================== */
+.load-more-container {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.btn-load-more {
+    display: none;
+}
+
+.load-more-status {
+    margin-top: 10px;
+    color: #666;
+    font-size: 14px;
+}
+
+/* ==================== Stream Container ==================== */
+.stream-container {
+    display: block;
+}
