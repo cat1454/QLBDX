@@ -171,6 +171,9 @@ CORS_ALLOW_METHODS = [
     'OPTIONS'
 ]
 
+# Security settings for development (remove Cross-Origin-Opener-Policy warning)
+SECURE_CROSS_ORIGIN_OPENER_POLICY = None  # Disable COOP for HTTP development
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 

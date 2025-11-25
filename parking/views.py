@@ -13,79 +13,217 @@ import cv2
 import numpy as np
 import math
 
+# ==================================================================================
+# CAMERA STREAMING SYSTEM - Hệ thống stream camera từ Raspberry Pi
+# ==================================================================================
+# 
+# KIẾN TRÚC:
+# 1. Raspberry Pi --POST--> /api/stream/raspberrypi_cam (lưu frame vào file)
+# 2. Browser --GET--> /video_feed/raspberrypi_cam (đọc file và stream MJPEG)
+#
+# FLOW:
+#   Raspberry Pi                Django Server              Browser
+#        |                            |                        |
+#        |--POST frame.jpg----------->|                        |
+#        |                      [Save to disk]                 |
+#        |                            |<-------GET stream------|
+#        |                      [Read from disk]               |
+#        |                      [Generate MJPEG]               |
+#        |                            |-------Frames---------->|
+#        |--POST frame.jpg----------->|                        |
+#        |                      [Update disk]                  |
+#        |                      [Read new frame]               |
+#        |                            |-------Frames---------->|
+# ==================================================================================
+
 # Global variables for stream handling
 streams = {}
 stream_locks = {}
 detection_history = deque(maxlen=200)  # Keep last 200 detections
 
 def get_stream_frame(camera_id):
-    """Get the latest frame from a specific camera stream (from file)"""
+    """
+    📹 ĐỌC FRAME TỪ FILE - Được gọi ~30 lần/giây
+    
+    Mục đích: Đọc frame mới nhất từ file mà Raspberry Pi đã POST lên
+    
+    Args:
+        camera_id (str): ID camera (vd: 'raspberrypi_cam')
+    
+    Returns:
+        bytes: JPEG image data hoặc None nếu lỗi
+    
+    Logic:
+        1. Kiểm tra file tồn tại
+        2. Kiểm tra file age (< 10 giây = còn fresh)
+        3. Đọc file với retry (phòng file đang được ghi)
+        4. Return binary JPEG data
+    """
     import os
     import time
     
     frame_path = f'media/streams/{camera_id}.jpg'
     
-    # Kiểm tra file tồn tại và còn mới (dưới 10 giây)
-    if os.path.exists(frame_path):
-        file_age = time.time() - os.path.getmtime(frame_path)
-        if file_age > 10:
-            print(f"⚠️ Stream file too old ({file_age:.1f}s) for {camera_id}")
-            return None
-            
-        try:
-            # Đọc file với retry nếu bị lock
-            for _ in range(3):  # Thử 3 lần
-                try:
-                    with open(frame_path, 'rb') as f:
-                        return f.read()
-                except (IOError, OSError):
-                    time.sleep(0.01)  # Đợi 10ms rồi thử lại
-        except Exception as e:
-            print(f"❌ Error reading frame: {e}")
+    # ✅ Step 1: Kiểm tra file tồn tại
+    if not os.path.exists(frame_path):
+        print(f"❌ Stream file NOT FOUND: {frame_path}")
+        return None
+    
+    # ✅ Step 2: Kiểm tra file còn mới không (< 10 giây)
+    file_age = time.time() - os.path.getmtime(frame_path)
+    if file_age > 10:
+        print(f"⚠️ Stream file too old ({file_age:.1f}s) for {camera_id}")
+        return None
+    
+    # 📊 Logging (mỗi 30 lần đọc = 1 giây)
+    if not hasattr(get_stream_frame, 'counter'):
+        get_stream_frame.counter = {}
+    if camera_id not in get_stream_frame.counter:
+        get_stream_frame.counter[camera_id] = 0
+    
+    get_stream_frame.counter[camera_id] += 1
+    if get_stream_frame.counter[camera_id] % 30 == 0:
+        file_size = os.path.getsize(frame_path) / 1024
+        print(f"📹 Reading frame for {camera_id}: age={file_age:.1f}s, size={file_size:.1f}KB")
+    
+    # ✅ Step 3: Đọc file với retry (tránh race condition khi Rasp đang ghi)
+    try:
+        for attempt in range(3):  # Thử 3 lần
+            try:
+                with open(frame_path, 'rb') as f:
+                    frame_data = f.read()
+                    if len(frame_data) > 0:
+                        return frame_data  # ✅ Success!
+                    else:
+                        print(f"⚠️ Empty frame file for {camera_id}")
+                        return None
+            except (IOError, OSError) as e:
+                if attempt == 2:  # Lần cuối cùng
+                    print(f"❌ Failed to read frame after 3 attempts: {e}")
+                time.sleep(0.01)  # Đợi 10ms rồi thử lại
+    except Exception as e:
+        print(f"❌ Error reading frame: {e}")
+    
     return None
 
 def gen_frames(camera_id):
-    """Generator for video stream frames - liên tục stream với error handling"""
-    import time
-    last_frame = None  # Giữ frame cuối cùng
+    """
+    🎬 GENERATOR MJPEG STREAM - Chạy liên tục cho mỗi client
     
-    while True:
+    Mục đích: Tạo infinite stream của MJPEG frames cho browser
+    
+    Args:
+        camera_id (str): ID camera
+    
+    Yields:
+        bytes: MJPEG frame với multipart boundary
+    
+    Flow:
+        Loop vô hạn:
+          1. Đọc frame mới từ file (via get_stream_frame)
+          2. Nếu có frame mới → yield frame mới
+          3. Nếu không có frame mới → yield frame cũ (QUAN TRỌNG: giữ connection)
+          4. Sleep 33ms (~30 FPS)
+          5. Lặp lại
+    
+    Error Handling:
+        - GeneratorExit: Client đóng tab/refresh → exit gracefully
+        - Exception: Log error nhưng tiếp tục (không crash)
+        - Max 50 errors liên tiếp → dừng để tránh infinite loop
+    """
+    import time
+    last_frame = None  # Cache frame cuối cùng
+    error_count = 0
+    max_errors = 50
+    
+    print(f"🎬 Starting stream generator for: {camera_id}")
+    
+    while True:  # ♾️ Infinite loop (cho đến khi client disconnect)
         try:
+            # 📖 Đọc frame mới từ file
             frame = get_stream_frame(camera_id)
-            if frame is not None:
-                last_frame = frame  # Cập nhật frame mới nhất
-                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-            elif last_frame is not None:
-                # Nếu không có frame mới, hiển thị lại frame cũ
-                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + last_frame + b'\r\n')
-            else:
-                # Nếu chưa có frame nào, yield empty frame để giữ connection
-                time.sleep(0.1)
-                continue
             
-            time.sleep(0.033)  # ~30 FPS (1/30 = 0.033s)
+            if frame is not None:
+                # ✅ Có frame mới → update cache và yield
+                last_frame = frame
+                error_count = 0  # Reset error counter
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+                
+            elif last_frame is not None:
+                # 🔁 Không có frame mới → yield frame cũ (QUAN TRỌNG!)
+                # Lý do: Phải yield gì đó để giữ HTTP connection alive
+                yield (b'--frame\r\nContent-Type: image/jpeg\r\n\r\n' + last_frame + b'\r\n')
+                
+            else:
+                # ⏳ Chưa có frame nào (lần đầu khởi động)
+                error_count += 1
+                if error_count > max_errors:
+                    print(f"❌ Too many errors ({error_count}), stopping stream for {camera_id}")
+                    break
+                time.sleep(0.1)
+                continue  # Skip yield, chờ frame đầu tiên
+            
+            # ⏱️ Sleep để maintain ~30 FPS (1/30 = 0.033s)
+            time.sleep(0.033)
+            
         except GeneratorExit:
-            # Client đóng connection - exit gracefully
-            print(f"Stream closed for camera: {camera_id}")
+            # 🔌 Client đóng connection (đóng tab, refresh, etc.)
+            print(f"🔌 Stream closed by client: {camera_id}")
             break
+            
         except Exception as e:
-            # Log lỗi nhưng không dừng generator
-            print(f"Error in gen_frames for {camera_id}: {e}")
+            # ⚠️ Unexpected error → log nhưng tiếp tục
+            error_count += 1
+            print(f"⚠️ Error in gen_frames for {camera_id}: {e} (error #{error_count})")
+            if error_count > max_errors:
+                print(f"❌ Too many errors ({error_count}), stopping stream")
+                break
             time.sleep(0.1)
-            continue
 
 @login_required
 def video_feed(request, src):
-    """View for video stream với keep-alive headers"""
+    """
+    🎥 API ENDPOINT - MJPEG Video Stream
+    
+    URL: /video_feed/<camera_id>
+    Method: GET
+    Authentication: Required (login_required)
+    
+    Mục đích: Cung cấp MJPEG stream cho browser
+    
+    Args:
+        request: Django HTTP request
+        src (str): Camera ID (vd: 'raspberrypi_cam')
+    
+    Returns:
+        StreamingHttpResponse: MJPEG stream với multipart/x-mixed-replace
+    
+    Headers:
+        Content-Type: multipart/x-mixed-replace; boundary=frame
+        Cache-Control: no-cache (buộc browser không cache)
+        Pragma: no-cache (HTTP/1.0 compatibility)
+        Expires: 0 (expire ngay lập tức)
+    
+    How it works:
+        1. Browser tạo GET request
+        2. Django tạo StreamingHttpResponse với gen_frames generator
+        3. Generator liên tục yield frames
+        4. Browser hiển thị frames như video (MJPEG format)
+    """
+    print(f"🎥 Stream request: {src} from {request.user.username} ({request.META.get('REMOTE_ADDR', 'unknown')})")
+    
     response = StreamingHttpResponse(
-        gen_frames(src),
-        content_type='multipart/x-mixed-replace; boundary=frame'
+        gen_frames(src),  # Generator function (yields frames)
+        content_type='multipart/x-mixed-replace; boundary=frame'  # MJPEG format
     )
-    # Thêm headers để giữ connection
+    
+    # 🔧 Anti-cache headers (buộc browser luôn fetch mới)
     response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     response['Pragma'] = 'no-cache'
     response['Expires'] = '0'
     response['X-Accel-Buffering'] = 'no'  # Disable nginx buffering nếu có
+    
+    print(f"✅ Stream response created for: {src}")
     return response
 
 @csrf_exempt
@@ -162,6 +300,8 @@ def latest_detections(request):
 @login_required
 def upload_detection(request):
     """API endpoint for receiving license plate detections"""
+
+
     if request.method == 'POST':
         detection = {
             "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -357,7 +497,32 @@ from django.core.files.base import ContentFile
 @csrf_exempt
 def upload_license_plate(request):
     """Nhận dữ liệu từ Raspberry Pi: ảnh + thông tin biển số (TỰ ĐỘNG ENTRY/EXIT)"""
-    if request.method == "POST":
+    isSensor = False
+    sensorAPI = "http://172.20.10.2:5000/sensors"
+    
+    # Fetch sensor data
+    try:
+        import requests
+        response = requests.get(sensorAPI, timeout=2)
+        if response.status_code == 200:
+            sensor_data = response.json()
+            filtered = sensor_data.get("filtered", {})
+            # Nếu có ít nhất 1 sensor có giá trị filtered (không None)
+            if filtered.get("sensor1") is not None or filtered.get("sensor2") is not None:
+                isSensor = True
+                print(f"🟢 Sensor detected: {filtered}")
+            else:
+                print(f"⚪ No vehicle detected (all filtered values are None)")
+        else:
+            print(f"⚠️ Sensor API returned status {response.status_code}")
+    except requests.exceptions.Timeout:
+        print("⚠️ Sensor API timeout")
+    except requests.exceptions.RequestException as e:
+        print(f"⚠️ Sensor API error: {e}")
+    except Exception as e:
+        print(f"❌ Unexpected error fetching sensor: {e}")
+
+    if request.method == "POST" and isSensor:
         try:
             from .models import VehicleDetection, ParkingSession
             from django.core.files.storage import default_storage
@@ -489,26 +654,57 @@ def upload_license_plate(request):
 
 @csrf_exempt
 def receive_stream(request, src):
-    """Nhận stream từ Raspberry Pi (POST từng frame MJPEG) - Atomic write"""
+    """
+    📤 API ENDPOINT - Nhận frame từ Raspberry Pi
+    
+    URL: /api/stream/<camera_id>
+    Method: POST
+    Body: Binary JPEG data
+    
+    Mục đích: Nhận và lưu frame từ Raspberry Pi vào file
+    
+    Args:
+        request: Django HTTP request với binary JPEG trong body
+        src (str): Camera ID (vd: 'raspberrypi_cam')
+    
+    Returns:
+        HttpResponse: "OK" hoặc error message
+    
+    Flow:
+        1. Raspberry Pi POST binary JPEG → Django
+        2. Django lưu vào media/streams/<camera_id>.jpg (ATOMIC WRITE)
+        3. Return "OK"
+        4. video_feed() sẽ đọc file này để stream cho browser
+    
+    Atomic Write:
+        - Ghi vào file .tmp trước
+        - Sau đó move sang file chính
+        - Tránh race condition khi đọc file đang được ghi
+    """
     if request.method == 'POST':
         try:
             import os
             import shutil
             
+            # 📁 Tạo thư mục nếu chưa có
             os.makedirs('media/streams', exist_ok=True)
+            
             frame_path = f'media/streams/{src}.jpg'
             temp_path = f'media/streams/{src}.tmp'
             
-            # Ghi vào file tạm trước
+            # ✅ Step 1: Ghi vào file tạm trước (atomic write)
             with open(temp_path, 'wb') as f:
                 f.write(request.body)
             
-            # Sau đó move atomic (tránh đọc file đang ghi)
+            # ✅ Step 2: Move atomic (tránh đọc file đang ghi)
             shutil.move(temp_path, frame_path)
             
             return HttpResponse("OK", status=200)
+            
         except Exception as e:
+            print(f"❌ Error saving stream frame: {e}")
             return HttpResponse(str(e), status=500)
+    
     return HttpResponse("Only POST allowed", status=405)
 
 from django.http import StreamingHttpResponse

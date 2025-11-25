@@ -4,8 +4,11 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 <head>
     <meta charset="UTF-8">
-    <title>User Dashboard - Smart Parking</title>
-    <link rel="stylesheet" href="{% static 'parking/css/dashboard_user.css' %}">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>User Dashboard - Smart Parking [UPDATED]</title>
+    <link rel="stylesheet" href="{% static 'parking/css/dashboard_user.css' %}?v={{ request.timestamp|default:'1' }}">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         /* Toast Notification System */
@@ -159,12 +162,21 @@
                 <!-- Left Section: Camera + Controls -->
                 <div class="stream-section" style="width: 60%;">
                     <div class="camera-section">
-                        <h2>🎥 Camera Giám Sát</h2>
-                        <img src="{% url 'video_feed' src='raspberrypi_cam' %}"
-                        width="50%"
-                        class="rounded-lg shadow"
-                        id="camera-stream"
-                        alt="Live camera stream không khả dụng">
+                        <h2>🎥 Camera Giám Sát <span id="stream-status" style="font-size: 14px; color: #999;"></span></h2>
+                        <div style="position: relative; display: inline-block; width: 100%;">
+                            <img src="{% url 'video_feed' src='raspberrypi_cam' %}"
+                            style="width: 100%; max-width: 100%vw; height: auto; border-radius: 8px; display: block;"
+                            class="rounded-lg shadow"
+                            id="camera-stream"
+                            alt="Đang tải camera stream...">
+                            
+                            <!-- Reconnect overlay -->
+                            <div id="reconnect-overlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 8px;">
+                                <div style="font-size: 48px; margin-bottom: 16px;">🔄</div>
+                                <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">Đang kết nối lại...</div>
+                                <div class="loading-spinner"></div>
+                            </div>
+                        </div>
                     </div>
                     
 
@@ -498,9 +510,6 @@
         </style>
     </div>
 
-    <!-- Font Awesome -->
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
-
     <!-- Detection Updates -->
 <script>
     // ================= TOAST NOTIFICATION SYSTEM =================
@@ -789,6 +798,88 @@
         updateDetections(true); // Reset=true để tự động cập nhật lịch sử mới nhất mỗi 3 giây
     }, 3000);
 
+    // ================= CAMERA STREAM AUTO-RECONNECT =================
+    (function() {
+        const streamImg = document.getElementById('camera-stream');
+        const streamStatus = document.getElementById('stream-status');
+        const reconnectOverlay = document.getElementById('reconnect-overlay');
+        let reconnectAttempts = 0;
+        let reconnectTimer = null;
+        let lastLoadTime = Date.now();
+        let isConnected = false;
+        
+        // Update status display
+        function updateStatus(status, color) {
+            if (streamStatus) {
+                streamStatus.textContent = status;
+                streamStatus.style.color = color;
+            }
+        }
+        
+        // Reconnect stream
+        function reconnectStream() {
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            
+            reconnectAttempts++;
+            console.log(`🔄 Reconnecting stream (attempt #${reconnectAttempts})...`);
+            
+            if (reconnectOverlay) reconnectOverlay.style.display = 'flex';
+            updateStatus('🔄 Đang kết nối lại...', '#ffc107');
+            
+            // Force reload with cache busting
+            const timestamp = new Date().getTime();
+            streamImg.src = "{% url 'video_feed' src='raspberrypi_cam' %}?t=" + timestamp;
+            
+            // Set timeout for next reconnect if this fails
+            reconnectTimer = setTimeout(() => {
+                if (!isConnected) {
+                    reconnectStream();
+                }
+            }, 5000); // Retry every 5 seconds
+        }
+        
+        // Stream loaded successfully
+        streamImg.addEventListener('load', function() {
+            console.log('✅ Camera stream connected');
+            isConnected = true;
+            lastLoadTime = Date.now();
+            reconnectAttempts = 0;
+            
+            if (reconnectOverlay) reconnectOverlay.style.display = 'none';
+            updateStatus('✅ Đang hoạt động', '#4CAF50');
+            
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+                reconnectTimer = null;
+            }
+        });
+        
+        // Stream error
+        streamImg.addEventListener('error', function() {
+            console.error('❌ Camera stream error');
+            isConnected = false;
+            updateStatus('❌ Mất kết nối', '#f44336');
+            
+            // Auto reconnect after 2 seconds
+            setTimeout(reconnectStream, 2000);
+        });
+        
+        // Monitor stream health (check if still receiving data)
+        setInterval(() => {
+            const timeSinceLastLoad = Date.now() - lastLoadTime;
+            
+            // If stream hasn't updated in 15 seconds, assume it's dead
+            if (isConnected && timeSinceLastLoad > 15000) {
+                console.warn('⚠️ Stream appears frozen, reconnecting...');
+                isConnected = false;
+                reconnectStream();
+            }
+        }, 5000); // Check every 5 seconds
+        
+        // Initial status
+        updateStatus('⏳ Đang kết nối...', '#999');
+    })();
+
 </script>
 <audio id="alertSound" 
        src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuAzvLZiTYIF2Sz5euqWBYKR6Hn8rhqJgU4jtXwy3opBSl+zPDckj8LFV6x6OumWRIKRp/h8sFuJwU3jdXwyXwqBSl9zPDbk0ALF1606OytVxYKSKTo87lrJgU6j9byz3wqBSiAz/LbiTcIF2i56+qnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBSiAzvLaiTcIF2i56uqnVxILSKXn8rhrJwU6jtXwzHwqBQ==" 
@@ -802,5 +893,6 @@ document.addEventListener("click", () => {
 }, { once: true });
 </script>
 
+<!-- ✅ UPDATED: Removed Font Awesome CDN to fix CORS errors - {{ request.build_absolute_uri }} -->
 </body>
 </html>
