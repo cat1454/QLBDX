@@ -40,5 +40,9 @@ urlpatterns = [
     
     # API endpoints - Trạng thái bãi đỗ
     path('api/parking/availability/', api_views.parking_availability, name='parking_availability'),
+    
+    # API endpoints - Xuất báo cáo
+    path('api/export/revenue/', api_views.export_revenue_csv, name='export_revenue_csv'),
+    path('api/export/detections/', api_views.export_detections_csv, name='export_detections_csv'),
    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

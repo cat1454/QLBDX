@@ -117,6 +117,23 @@
       background: #d4edda;
       color: #155724;
     }
+    
+    /* Export Modal Styles */
+    #exportModal[style*="display: flex"] {
+      display: flex !important;
+    }
+    
+    #exportModal input[type="date"]:focus,
+    #exportModal select:focus {
+      outline: none;
+      border-color: #56ab2f;
+      box-shadow: 0 0 0 3px rgba(86, 171, 47, 0.1);
+    }
+    
+    #exportModal button:hover {
+      transform: translateY(-2px);
+      transition: all 0.3s ease;
+    }
   </style>
 </head>
 <body class="admin-dashboard">
@@ -242,6 +259,82 @@
     </div>
     </section>
   </main>
+
+  <!-- Export Report Modal -->
+  <div id="exportModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center;">
+    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+      <h2 style="margin: 0 0 20px 0; color: #333; font-size: 24px;">📥 Xuất báo cáo CSV</h2>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Loại báo cáo:</label>
+        <select id="reportType" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+          <option value="revenue">💰 Báo cáo doanh thu</option>
+          <option value="detections">🎥 Báo cáo phát hiện xe</option>
+        </select>
+      </div>
+
+      <div id="revenueOptions">
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Khoảng thời gian:</label>
+          <select id="periodSelect" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <option value="day">📅 Hôm nay</option>
+            <option value="week">📆 Tuần này</option>
+            <option value="month" selected>📊 Tháng này</option>
+            <option value="year">📈 Năm này</option>
+            <option value="custom">📋 Tùy chỉnh</option>
+            <option value="all">🌍 Tất cả</option>
+          </select>
+        </div>
+
+        <div id="customDateRange" style="display: none; margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Từ ngày:</label>
+          <input type="date" id="startDate" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; margin-bottom: 10px;">
+          
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Đến ngày:</label>
+          <input type="date" id="endDate" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Trạng thái thanh toán:</label>
+          <select id="statusSelect" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <option value="all">Tất cả</option>
+            <option value="paid">✅ Đã thanh toán</option>
+            <option value="unpaid">⏳ Chưa thanh toán</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="detectionOptions" style="display: none;">
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Số ngày quá khứ:</label>
+          <select id="daysSelect" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <option value="1">1 ngày</option>
+            <option value="7" selected>7 ngày</option>
+            <option value="30">30 ngày</option>
+            <option value="90">90 ngày</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #555;">Loại sự kiện:</label>
+          <select id="eventTypeSelect" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <option value="all">Tất cả</option>
+            <option value="ENTRY">🚗 Vào bãi</option>
+            <option value="EXIT">🚪 Ra bãi</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 25px;">
+        <button onclick="closeExportModal()" style="flex: 1; padding: 12px; background: #f8f9fa; color: #666; border: 2px solid #ddd; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: 600;">
+          ❌ Hủy
+        </button>
+        <button onclick="downloadReport()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); color: white; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          📥 Tải xuống
+        </button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // Format number to Vietnamese currency
@@ -451,8 +544,69 @@
 
     // Export revenue report
     function exportRevenue() {
-      alert('📥 Tính năng xuất báo cáo đang phát triển...');
-      // TODO: Implement CSV/Excel export
+      document.getElementById('exportModal').style.display = 'flex';
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').style.display = 'none';
+    }
+
+    // Toggle report type options
+    document.getElementById('reportType').addEventListener('change', function() {
+      const revenueOpts = document.getElementById('revenueOptions');
+      const detectionOpts = document.getElementById('detectionOptions');
+      
+      if (this.value === 'revenue') {
+        revenueOpts.style.display = 'block';
+        detectionOpts.style.display = 'none';
+      } else {
+        revenueOpts.style.display = 'none';
+        detectionOpts.style.display = 'block';
+      }
+    });
+
+    // Toggle custom date range
+    document.getElementById('periodSelect').addEventListener('change', function() {
+      const customRange = document.getElementById('customDateRange');
+      customRange.style.display = this.value === 'custom' ? 'block' : 'none';
+    });
+
+    // Download report
+    function downloadReport() {
+      const reportType = document.getElementById('reportType').value;
+      let url = '';
+
+      if (reportType === 'revenue') {
+        const period = document.getElementById('periodSelect').value;
+        const status = document.getElementById('statusSelect').value;
+        
+        url = `/api/export/revenue/?period=${period}&status=${status}`;
+
+        if (period === 'custom') {
+          const startDate = document.getElementById('startDate').value;
+          const endDate = document.getElementById('endDate').value;
+          
+          if (!startDate || !endDate) {
+            alert('⚠️ Vui lòng chọn ngày bắt đầu và kết thúc!');
+            return;
+          }
+          
+          url = `/api/export/revenue/?start_date=${startDate}&end_date=${endDate}&status=${status}`;
+        }
+      } else {
+        const days = document.getElementById('daysSelect').value;
+        const eventType = document.getElementById('eventTypeSelect').value;
+        
+        url = `/api/export/detections/?days=${days}&event_type=${eventType}`;
+      }
+
+      // Download file
+      window.location.href = url;
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        closeExportModal();
+      }, 500);
     }
 
     // Refresh all data

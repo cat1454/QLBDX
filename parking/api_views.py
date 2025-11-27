@@ -557,3 +557,216 @@ def parking_availability(request):
         'occupancy_rate': round(occupancy_rate, 2),
         'active_vehicles': active_vehicles
     })
+
+
+# ==================== API XUẤT BÁO CÁO CSV ====================
+
+@require_http_methods(["GET"])
+def export_revenue_csv(request):
+    """
+    API xuất báo cáo doanh thu ra file CSV
+    
+    Query Parameters:
+        - period: 'day', 'week', 'month', 'year', 'all' (mặc định: 'month')
+        - start_date: 'YYYY-MM-DD' (tùy chọn)
+        - end_date: 'YYYY-MM-DD' (tùy chọn)
+        - status: 'all', 'paid', 'unpaid' (mặc định: 'all')
+    
+    Returns:
+        CSV file download
+    """
+    import csv
+    from django.http import HttpResponse
+    
+    period = request.GET.get('period', 'month')
+    start_date_str = request.GET.get('start_date')
+    end_date_str = request.GET.get('end_date')
+    status_filter = request.GET.get('status', 'all')
+    
+    # Xác định khoảng thời gian
+    now = timezone.localtime()
+    
+    if start_date_str and end_date_str:
+        # Custom date range
+        try:
+            start_time = timezone.make_aware(datetime.strptime(start_date_str, '%Y-%m-%d'))
+            end_time = timezone.make_aware(datetime.strptime(end_date_str, '%Y-%m-%d')) + timedelta(days=1)
+            filename_suffix = f"{start_date_str}_to_{end_date_str}"
+        except ValueError:
+            return JsonResponse({'error': 'Định dạng ngày không hợp lệ'}, status=400)
+    
+    elif period == 'day':
+        start_time = timezone.make_aware(datetime.combine(now.date(), datetime.min.time()))
+        end_time = start_time + timedelta(days=1)
+        filename_suffix = now.strftime('%Y-%m-%d')
+    
+    elif period == 'week':
+        start_time = timezone.make_aware(datetime.combine(now.date() - timedelta(days=now.weekday()), datetime.min.time()))
+        end_time = start_time + timedelta(days=7)
+        filename_suffix = f"week_{start_time.strftime('%Y-%m-%d')}"
+    
+    elif period == 'month':
+        start_time = timezone.make_aware(datetime(now.year, now.month, 1))
+        if now.month == 12:
+            end_time = timezone.make_aware(datetime(now.year + 1, 1, 1))
+        else:
+            end_time = timezone.make_aware(datetime(now.year, now.month + 1, 1))
+        filename_suffix = now.strftime('%Y-%m')
+    
+    elif period == 'year':
+        start_time = timezone.make_aware(datetime(now.year, 1, 1))
+        end_time = timezone.make_aware(datetime(now.year + 1, 1, 1))
+        filename_suffix = str(now.year)
+    
+    elif period == 'all':
+        start_time = None
+        end_time = None
+        filename_suffix = 'all'
+    
+    else:
+        return JsonResponse({'error': 'Period không hợp lệ'}, status=400)
+    
+    # Query sessions
+    sessions = ParkingSession.objects.filter(status='COMPLETED')
+    
+    if start_time and end_time:
+        sessions = sessions.filter(exit_time__gte=start_time, exit_time__lt=end_time)
+    
+    # Filter by payment status
+    if status_filter == 'paid':
+        sessions = sessions.filter(payment_status='PAID')
+    elif status_filter == 'unpaid':
+        sessions = sessions.filter(payment_status='UNPAID')
+    
+    sessions = sessions.order_by('-exit_time')
+    
+    # Create CSV response
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="bao_cao_doanh_thu_{filename_suffix}.csv"'
+    
+    # Add BOM for Excel UTF-8 support
+    response.write('\ufeff')
+    
+    writer = csv.writer(response)
+    
+    # Write header
+    writer.writerow([
+        'STT',
+        'Biển số xe',
+        'Thời gian vào',
+        'Thời gian ra',
+        'Thời lượng (phút)',
+        'Phí đỗ xe (VNĐ)',
+        'Trạng thái thanh toán',
+        'Ngày tạo'
+    ])
+    
+    # Write data
+    total_revenue = Decimal(0)
+    paid_revenue = Decimal(0)
+    unpaid_revenue = Decimal(0)
+    
+    for idx, session in enumerate(sessions, 1):
+        payment_status_map = {
+            'PAID': 'Đã thanh toán',
+            'UNPAID': 'Chưa thanh toán',
+            'FREE': 'Miễn phí'
+        }
+        
+        writer.writerow([
+            idx,
+            session.license_plate,
+            session.entry_time.strftime('%d/%m/%Y %H:%M:%S'),
+            session.exit_time.strftime('%d/%m/%Y %H:%M:%S') if session.exit_time else '',
+            session.duration_minutes or 0,
+            int(session.fee),
+            payment_status_map.get(session.payment_status, session.payment_status),
+            session.created_at.strftime('%d/%m/%Y %H:%M:%S')
+        ])
+        
+        total_revenue += session.fee
+        if session.payment_status == 'PAID':
+            paid_revenue += session.fee
+        elif session.payment_status == 'UNPAID':
+            unpaid_revenue += session.fee
+    
+    # Write summary
+    writer.writerow([])
+    writer.writerow(['=== TỔNG KẾT ==='])
+    writer.writerow(['Tổng số giao dịch:', sessions.count()])
+    writer.writerow(['Tổng doanh thu:', f"{int(total_revenue):,} VNĐ"])
+    writer.writerow(['Đã thu:', f"{int(paid_revenue):,} VNĐ"])
+    writer.writerow(['Chưa thu:', f"{int(unpaid_revenue):,} VNĐ"])
+    writer.writerow(['Ngày xuất báo cáo:', now.strftime('%d/%m/%Y %H:%M:%S')])
+    
+    return response
+
+
+@require_http_methods(["GET"])
+def export_detections_csv(request):
+    """
+    API xuất báo cáo phát hiện xe (detections) ra CSV
+    
+    Query Parameters:
+        - days: số ngày quá khứ (mặc định: 7)
+        - event_type: 'ENTRY', 'EXIT', 'all' (mặc định: 'all')
+    """
+    import csv
+    from django.http import HttpResponse
+    
+    days = int(request.GET.get('days', 7))
+    event_type = request.GET.get('event_type', 'all')
+    
+    # Query detections
+    start_time = timezone.now() - timedelta(days=days)
+    detections = VehicleDetection.objects.filter(detected_at__gte=start_time)
+    
+    if event_type in ['ENTRY', 'EXIT']:
+        detections = detections.filter(event_type=event_type)
+    
+    detections = detections.order_by('-detected_at')
+    
+    # Create CSV
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="bao_cao_phat_hien_{days}_ngay.csv"'
+    response.write('\ufeff')
+    
+    writer = csv.writer(response)
+    
+    # Header
+    writer.writerow([
+        'STT',
+        'Biển số xe',
+        'Loại sự kiện',
+        'Độ tin cậy (%)',
+        'Thời gian phát hiện',
+        'Camera nguồn',
+        'Đường dẫn ảnh'
+    ])
+    
+    # Data
+    for idx, detection in enumerate(detections, 1):
+        event_map = {
+            'ENTRY': 'Vào bãi',
+            'EXIT': 'Ra bãi'
+        }
+        
+        writer.writerow([
+            idx,
+            detection.license_plate,
+            event_map.get(detection.event_type, detection.event_type),
+            f"{detection.confidence * 100:.1f}",
+            detection.detected_at.strftime('%d/%m/%Y %H:%M:%S'),
+            detection.camera_source,
+            detection.image_path.name if detection.image_path else ''
+        ])
+    
+    # Summary
+    writer.writerow([])
+    writer.writerow(['=== TỔNG KẾT ==='])
+    writer.writerow(['Tổng số phát hiện:', detections.count()])
+    writer.writerow(['Số lần vào:', detections.filter(event_type='ENTRY').count()])
+    writer.writerow(['Số lần ra:', detections.filter(event_type='EXIT').count()])
+    writer.writerow(['Ngày xuất:', timezone.now().strftime('%d/%m/%Y %H:%M:%S')])
+    
+    return response

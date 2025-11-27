@@ -499,6 +499,7 @@ def upload_license_plate(request):
     """Nhận dữ liệu từ Raspberry Pi: ảnh + thông tin biển số (TỰ ĐỘNG ENTRY/EXIT)"""
     isSensor = False
     sensorAPI = "http://172.20.10.2:5000/sensors"
+    sensor_port = 0
     
     # Fetch sensor data
     try:
@@ -511,6 +512,7 @@ def upload_license_plate(request):
             if filtered.get("sensor1") is not None or filtered.get("sensor2") is not None:
                 isSensor = True
                 print(f"🟢 Sensor detected: {filtered}")
+                sensor_port = 1 if filtered.get("sensor1") is not None else 2
             else:
                 print(f"⚪ No vehicle detected (all filtered values are None)")
         else:
@@ -541,47 +543,19 @@ def upload_license_plate(request):
             except:
                 confidence = 0.0
 
-            # ⭐ KIỂM TRA BÃI ĐẦY - Đếm số xe đang đỗ (ACTIVE sessions)
-            MAX_PARKING_SLOTS = 4  # Tổng số chỗ đỗ
-            current_parked = ParkingSession.objects.filter(status='ACTIVE').count()
-            
             # ⭐ TỰ ĐỘNG XÁC ĐỊNH EVENT TYPE (Lần 1 = ENTRY, Lần 2 = EXIT)
             active_session = ParkingSession.objects.filter(
                 license_plate=plate,
                 status='ACTIVE'
             ).first()
-            
-            if active_session:
-                event_type = 'EXIT'
-                message = f'🚗 Xe {plate} RA bãi'
-            else:
+
+            if sensor_port == 1:
                 event_type = 'ENTRY'
                 message = f'🚗 Xe {plate} VÀO bãi'
-                
-                # ⚠️ KIỂM TRA BÃI ĐẦY - CHỈ KHI XE VÀO
-                if current_parked >= MAX_PARKING_SLOTS:
-                    print(f"🔴 BÃI ĐẦY: {current_parked}/{MAX_PARKING_SLOTS} - Từ chối xe {plate}")
-                    
-                    # Lưu detection nhưng không tạo session
-                    VehicleDetection.objects.create(
-                        license_plate=plate,
-                        confidence=confidence,
-                        event_type='ENTRY',
-                        camera_source=source,
-                        image_path=image_file if image_file else None
-                    )
-                    
-                    # Trả về 503 Service Unavailable để Raspberry Pi biết tạm dừng detect
-                    return JsonResponse({
-                        "status": "parking_full",
-                        "msg": "Bãi đỗ xe đã đầy",
-                        "plate": plate,
-                        "available_slots": 0,
-                        "total_slots": MAX_PARKING_SLOTS,
-                        "action": "deny_entry",
-                        "display_message": f"BÃI ĐẦY! Vui lòng quay lại sau"
-                    }, status=503)
-
+            if sensor_port == 2:
+                event_type = 'EXIT'
+                message = f'🚗 Xe {plate} RA bãi'
+         
             # Lưu ảnh - Django ImageField sẽ tự động lưu vào media/detections/
             # ✅ LƯU VÀO DATABASE (VehicleDetection)
             detection = VehicleDetection.objects.create(
@@ -604,8 +578,7 @@ def upload_license_plate(request):
                 "message": message,
                 "detection_id": detection.id,
                 "file": filename,
-                "available_slots": MAX_PARKING_SLOTS - current_parked,
-                "total_slots": MAX_PARKING_SLOTS
+               
             }
 
             if event_type == 'ENTRY':
@@ -618,7 +591,7 @@ def upload_license_plate(request):
                 )
                 response_data['session_id'] = session.id
                 response_data['action'] = 'open_barrier'
-                print(f"✅ ENTRY: {plate} from {source} ({confidence:.2%}) -> Session #{session.id}")
+                print(f"ENTRY: {plate} from {source} ({confidence:.2%}) -> Session #{session.id}")
                 
             elif event_type == 'EXIT':
                 # Kết thúc phiên đỗ xe - TỰ ĐỘNG TÍNH TOÁN
